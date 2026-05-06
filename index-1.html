@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JavaScript小白练习</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f8f9fa;
+            color: #333;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #e9ecef;
+        }
+        h1 {
+            color: #4CAF50;
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #6c757d;
+            font-size: 1.1rem;
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #4CAF50;
+        }
+        h2 {
+            color: #495057;
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+        }
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background-color 0.3s ease;
+        }
+        .btn:hover {
+            background-color: #45a049;
+            transform: translateY(-2px);
+        }
+        .result {
+            margin-top: 15px;
+            padding: 15px;
+            background: white;
+            border-radius: 5px;
+            border: 1px solid #e9ecef;
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+            min-height: 100px;
+        }
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #e9ecef;
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+        @media (max-width: 768px) {
+            .container {
+                margin: 10px;
+                padding: 15px;
+            }
+            h1 {
+                font-size: 1.8rem;
+            }
+            .section {
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>JavaScript小白练习</h1>
+            <p class="subtitle">基础语法学习与实践</p>
+        </header>
+        
+        <div class="section">
+            <h2>1. 变量定义与类型</h2>
+            <p>测试不同类型的变量定义和使用</p>
+            <button class="btn" onclick="testVariables()">运行测试</button>
+            <div id="variablesResult" class="result"></div>
+        </div>
+        
+        <div class="section">
+            <h2>2. 表达式</h2>
+            <p>测试算术、比较和逻辑表达式</p>
+            <button class="btn" onclick="testExpressions()">运行测试</button>
+            <div id="expressionsResult" class="result"></div>
+        </div>
+        
+        <div class="section">
+            <h2>3. 流程控制</h2>
+            <p>测试条件语句和循环结构</p>
+            <button class="btn" onclick="testFlowControl()">运行测试</button>
+            <div id="flowControlResult" class="result"></div>
+        </div>
+        
+        <div class="section">
+            <h2>4. 函数</h2>
+            <p>测试函数定义和调用</p>
+            <button class="btn" onclick="testFunctions()">运行测试</button>
+            <div id="functionsResult" class="result"></div>
+        </div>
+        
+        <footer>
+            <p>JavaScript基础知识练习 © 2026</p>
+        </footer>
+    </div>
+    
+    <script>
+        // 1. 变量定义与类型
+        function testVariables() {
+            // 变量定义 - 三种方式
+            let name = "张三";      // let 声明的变量
+            const age = 25;         // const 声明的常量
+            var isStudent = true;   // var 声明的变量
+            
+            // 变量类型
+            let num = 100;           // 数字
+            let str = "Hello";      // 字符串
+            let bool = false;        // 布尔值
+            let arr = [1, 2, 3];     // 数组
+            let obj = {name: "李四", age: 30};  // 对象
+            let undef;               // undefined
+            let nul = null;          // null
+            
+            // 显示结果
+            let result = "变量定义与类型测试:\n";
+            result += `name: ${name} (${typeof name}) - 使用 let 声明\n`;
+            result += `age: ${age} (${typeof age}) - 使用 const 声明\n`;
+            result += `isStudent: ${isStudent} (${typeof isStudent}) - 使用 var 声明\n`;
+            result += `num: ${num} (${typeof num}) - 数字类型\n`;
+            result += `str: ${str} (${typeof str}) - 字符串类型\n`;
+            result += `bool: ${bool} (${typeof bool}) - 布尔类型\n`;
+            result += `arr: ${arr} (${typeof arr}) - 数组类型\n`;
+            result += `obj: ${JSON.stringify(obj)} (${typeof obj}) - 对象类型\n`;
+            result += `undef: ${undef} (${typeof undef}) - undefined\n`;
+            result += `nul: ${nul} (${typeof nul}) - null\n`;
+            
+            document.getElementById('variablesResult').textContent = result;
+        }
+        
+        // 2. 表达式
+        function testExpressions() {
+            // 算术表达式
+            let a = 10 + 5;  // 加法
+            let b = 10 - 5;  // 减法
+            let c = 10 * 5;  // 乘法
+            let d = 10 / 5;  // 除法
+            let e = 10 % 3;  // 取模
+            
+            // 比较表达式
+            let f = 10 > 5;   // 大于
+            let g = 10 < 5;   // 小于
+            let h = 10 === 5; // 等于
+            let i = 10 !== 5; // 不等于
+            
+            // 逻辑表达式
+            let j = true && false; // 与运算
+            let k = true || false; // 或运算
+            let l = !true;         // 非运算
+            
+            // 显示结果
+            let result = "表达式测试:\n";
+            result += `10 + 5 = ${a} - 加法\n`;
+            result += `10 - 5 = ${b} - 减法\n`;
+            result += `10 * 5 = ${c} - 乘法\n`;
+            result += `10 / 5 = ${d} - 除法\n`;
+            result += `10 % 3 = ${e} - 取模\n`;
+            result += `10 > 5 = ${f} - 大于\n`;
+            result += `10 < 5 = ${g} - 小于\n`;
+            result += `10 === 5 = ${h} - 等于\n`;
+            result += `10 !== 5 = ${i} - 不等于\n`;
+            result += `true && false = ${j} - 与运算\n`;
+            result += `true || false = ${k} - 或运算\n`;
+            result += `!true = ${l} - 非运算\n`;
+            
+            document.getElementById('expressionsResult').textContent = result;
+        }
+        
+        // 3. 流程控制
+        function testFlowControl() {
+            let result = "流程控制测试:\n";
+            
+            // if-else 语句
+            let score = 85;
+            if (score >= 90) {
+                result += `分数 ${score}：优秀 - if 条件\n`;
+            } else if (score >= 80) {
+                result += `分数 ${score}：良好 - else if 条件\n`;
+            } else if (score >= 60) {
+                result += `分数 ${score}：及格 - else if 条件\n`;
+            } else {
+                result += `分数 ${score}：不及格 - else 条件\n`;
+            }
+            
+            // switch 语句
+            let day = 3;
+            let dayName;
+            switch (day) {
+                case 1:
+                    dayName = "星期一";
+                    break;
+                case 2:
+                    dayName = "星期二";
+                    break;
+                case 3:
+                    dayName = "星期三";
+                    break;
+                case 4:
+                    dayName = "星期四";
+                    break;
+                case 5:
+                    dayName = "星期五";
+                    break;
+                default:
+                    dayName = "周末";
+            }
+            result += `星期 ${day}：${dayName} - switch 语句\n`;
+            
+            // for 循环
+            result += "for 循环输出 1-5：";
+            for (let i = 1; i <= 5; i++) {
+                result += i + " ";
+            }
+            result += "\n";
+            
+            // while 循环
+            result += "while 循环输出 1-5：";
+            let j = 1;
+            while (j <= 5) {
+                result += j + " ";
+                j++;
+            }
+            result += "\n";
+            
+            // do-while 循环
+            result += "do-while 循环输出 1-5：";
+            let k = 1;
+            do {
+                result += k + " ";
+                k++;
+            } while (k <= 5);
+            
+            document.getElementById('flowControlResult').textContent = result;
+        }
+        
+        // 4. 函数
+        function testFunctions() {
+            // 函数定义 - 传统方式
+            function add(a, b) {
+                return a + b;
+            }
+            
+            // 箭头函数
+            const multiply = (a, b) => a * b;
+            
+            // 函数调用
+            let sum = add(5, 3);
+            let product = multiply(4, 6);
+            
+            // 函数表达式
+            const subtract = function(a, b) {
+                return a - b;
+            };
+            let difference = subtract(10, 4);
+            
+            // 显示结果
+            let result = "函数测试:\n";
+            result += `add(5, 3) = ${sum} - 传统函数\n`;
+            result += `multiply(4, 6) = ${product} - 箭头函数\n`;
+            result += `subtract(10, 4) = ${difference} - 函数表达式\n`;
+            
+            // 函数参数默认值
+            function greet(name = "朋友") {
+                return `你好，${name}！`;
+            }
+            result += `greet() = ${greet()} - 默认参数\n`;
+            result += `greet("张三") = ${greet("张三")} - 传入参数\n`;
+            
+            document.getElementById('functionsResult').textContent = result;
+        }
+    </script>
+</body>
+</html>
