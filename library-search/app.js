@@ -330,24 +330,65 @@ function checkAnswer(qIdx, optIdx, element) {
   // 添加当前选择样式
   element.classList.add('selected');
   
-  if (optIdx === question.answer) {
-    element.classList.add('correct');
-    element.querySelector('.option-status').innerHTML = '✓';
-    quizStats.correct++;
-    showToast('回答正确！', 'success');
+  // 判断是单选题还是多选题
+  if (Array.isArray(question.answer)) {
+    // 多选题逻辑
+    const isCorrect = question.answer.includes(optIdx);
+    
+    if (isCorrect) {
+      element.classList.add('correct');
+      element.querySelector('.option-status').innerHTML = '✓';
+      
+      // 检查是否所有正确选项都已选中
+      const allSelected = question.answer.every(idx => 
+        document.querySelectorAll(`#choiceQuestionsArea .question-section:nth-child(${qIdx + 1}) .option-item`)[idx].classList.contains('selected')
+      );
+      
+      if (allSelected) {
+        quizStats.correct++;
+        showToast('回答正确！', 'success');
+        
+        // 显示解析
+        document.getElementById(`analysis-${qIdx}`).style.display = 'block';
+      }
+    } else {
+      element.classList.add('wrong');
+      element.querySelector('.option-status').innerHTML = '✗';
+      quizStats.wrong++;
+      
+      // 显示所有正确答案
+      question.answer.forEach(idx => {
+        const correctOption = document.querySelectorAll(`#choiceQuestionsArea .question-section:nth-child(${qIdx + 1}) .option-item`)[idx];
+        correctOption.classList.add('correct');
+        correctOption.querySelector('.option-status').innerHTML = '✓';
+      });
+      
+      showToast('回答错误，已显示正确答案', 'error');
+      
+      // 显示解析
+      document.getElementById(`analysis-${qIdx}`).style.display = 'block';
+    }
   } else {
-    element.classList.add('wrong');
-    element.querySelector('.option-status').innerHTML = '✗';
-    quizStats.wrong++;
-    // 显示正确答案
-    const correctOption = document.querySelectorAll(`#choiceQuestionsArea .question-section:nth-child(${qIdx + 1}) .option-item`)[question.answer];
-    correctOption.classList.add('correct');
-    correctOption.querySelector('.option-status').innerHTML = '✓';
-    showToast('回答错误，已显示正确答案', 'error');
+    // 单选题逻辑
+    if (optIdx === question.answer) {
+      element.classList.add('correct');
+      element.querySelector('.option-status').innerHTML = '✓';
+      quizStats.correct++;
+      showToast('回答正确！', 'success');
+    } else {
+      element.classList.add('wrong');
+      element.querySelector('.option-status').innerHTML = '✗';
+      quizStats.wrong++;
+      // 显示正确答案
+      const correctOption = document.querySelectorAll(`#choiceQuestionsArea .question-section:nth-child(${qIdx + 1}) .option-item`)[question.answer];
+      correctOption.classList.add('correct');
+      correctOption.querySelector('.option-status').innerHTML = '✓';
+      showToast('回答错误，已显示正确答案', 'error');
+    }
+    
+    // 显示解析
+    document.getElementById(`analysis-${qIdx}`).style.display = 'block';
   }
-  
-  // 显示解析
-  document.getElementById(`analysis-${qIdx}`).style.display = 'block';
   
   // 更新答题统计
   updateQuizStats();
