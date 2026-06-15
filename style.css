@@ -715,47 +715,363 @@ body {
   font-weight: 500;
 }
 
-/* 响应式 */
+/* 进度追踪 */
+.progress-bar {
+  height: 4px;
+  background: #e2e8f0;
+  position: sticky;
+  top: 64px;
+  z-index: 99;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--course-color) 0%, #63b3ed 100%);
+  transition: width 0.3s;
+}
+
+/* 学习统计面板 */
+.stats-panel {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.stat-item {
+  text-align: center;
+  flex: 1;
+  min-width: 120px;
+}
+
+.stat-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--course-color);
+}
+
+.stat-label {
+  font-size: 0.8rem;
+  color: #718096;
+  margin-top: 4px;
+}
+
+/* 书签功能 */
+.bookmark-btn {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 36px;
+  height: 36px;
+  background: white;
+  border: 2px solid #e2e8f0;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s;
+  z-index: 10;
+}
+
+.bookmark-btn:hover {
+  border-color: #f6ad55;
+  background: #fffaf0;
+}
+
+.bookmark-btn.active {
+  border-color: #f6ad55;
+  background: #fef3c7;
+}
+
+.bookmark-btn svg {
+  fill: none;
+  stroke: #a0aec0;
+  transition: all 0.3s;
+}
+
+.bookmark-btn.active svg {
+  fill: #f6ad55;
+  stroke: #d69e2e;
+}
+
+/* 浮动操作按钮 */
+.fab-container {
+  position: fixed;
+  bottom: 100px;
+  right: 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  z-index: 999;
+}
+
+.fab-btn {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(20px);
+}
+
+.fab-btn.visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.fab-btn:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+}
+
+.fab-primary {
+  background: linear-gradient(135deg, #1a365d 0%, #2c5282 100%);
+  color: white;
+}
+
+.fab-secondary {
+  background: white;
+  color: #4a5568;
+  border: 2px solid #e2e8f0;
+}
+
+/* 答题结果统计 */
+.quiz-result {
+  margin-top: 20px;
+  padding: 20px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.quiz-score {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1.2rem;
+  color: white;
+}
+
+.quiz-score.excellent {
+  background: linear-gradient(135deg, #38a169 0%, #48bb78 100%);
+}
+
+.quiz-score.good {
+  background: linear-gradient(135deg, #ed8936 0%, #f6ad55 100%);
+}
+
+.quiz-score.poor {
+  background: linear-gradient(135deg, #fc8181 0%, #f56565 100%);
+}
+
+.quiz-details {
+  flex: 1;
+}
+
+.quiz-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.quiz-row:last-child {
+  border-bottom: none;
+}
+
+.quiz-label {
+  color: #718096;
+  font-size: 0.9rem;
+}
+
+.quiz-value {
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.quiz-value.correct {
+  color: #38a169;
+}
+
+.quiz-value.wrong {
+  color: #fc8181;
+}
+
+/* 快速跳转 */
+.quick-nav {
+  position: fixed;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  background: white;
+  border-radius: 0 8px 8px 0;
+  box-shadow: 2px 0 15px rgba(0,0,0,0.1);
+  padding: 8px;
+  z-index: 998;
+  display: none;
+}
+
+.quick-nav.visible {
+  display: block;
+}
+
+.quick-nav-item {
+  width: 40px;
+  height: 40px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #718096;
+}
+
+.quick-nav-item:hover {
+  background: #f7fafc;
+}
+
+.quick-nav-item.active {
+  background: var(--course-color);
+  color: white;
+}
+
+/* 搜索高亮 */
+.highlight {
+  background: #fef08a;
+  padding: 2px 4px;
+  border-radius: 3px;
+}
+
+/* 空状态优化 */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: #a0aec0;
+}
+
+.empty-state svg {
+  width: 80px;
+  height: 80px;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.empty-state h3 {
+  font-size: 1.1rem;
+  color: #4a5568;
+  margin-bottom: 8px;
+}
+
+/* 加载动画 */
+.loading {
+  display: flex;
+  justify-content: center;
+  padding: 40px;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #e2e8f0;
+  border-top-color: var(--course-color);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* 响应式优化 */
 @media (max-width: 768px) {
-  .header-inner {
+  .stats-panel {
     flex-direction: column;
-    height: auto;
-    padding: 12px 16px;
-    gap: 10px;
+    gap: 12px;
   }
+  
+  .stat-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-width: auto;
+    padding: 10px 0;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  
+  .stat-item:last-child {
+    border-bottom: none;
+  }
+  
+  .stat-value {
+    font-size: 1.4rem;
+  }
+  
+  .fab-container {
+    bottom: 80px;
+    right: 15px;
+  }
+  
+  .fab-btn {
+    width: 48px;
+    height: 48px;
+  }
+  
+  .quick-nav {
+    display: none !important;
+  }
+}
 
-  .nav {
-    gap: 16px;
-  }
+/* 快捷键提示 */
+.shortcuts-hint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 16px;
+  font-size: 0.85rem;
+  color: rgba(255,255,255,0.7);
+}
 
-  .hero-section {
-    padding: 40px 0 32px;
-  }
+.shortcut {
+  padding: 4px 10px;
+  background: rgba(255,255,255,0.2);
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 0.75rem;
+}
 
-  .hero-section h1 {
-    font-size: 1.6rem;
-  }
+.divider {
+  color: rgba(255,255,255,0.4);
+}
 
-  .hero-search {
-    flex-direction: column;
-    margin: 0 16px;
-  }
-
-  .hero-search button {
-    justify-content: center;
-  }
-
-  .course-cards {
-    grid-template-columns: 1fr;
-  }
-
-  .chapter-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .section-detail {
-    padding: 20px;
-  }
+/* 统计区域 */
+.stats-section {
+  padding: 32px 0;
 }
 
 /* 功能按钮 */

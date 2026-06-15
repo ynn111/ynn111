@@ -29,6 +29,11 @@
     </div>
   </header>
 
+  <!-- 进度条 -->
+  <div class="progress-bar" id="progressBar">
+    <div class="progress-fill" id="progressFill"></div>
+  </div>
+
   <!-- 首页视图 -->
   <div id="homeView">
     <!-- 横幅区域 -->
@@ -45,6 +50,36 @@
             </svg>
             检索
           </button>
+        </div>
+        <!-- 快捷键提示 -->
+        <div class="shortcuts-hint">
+          <span class="shortcut">Ctrl+K</span> 快速搜索
+          <span class="divider">|</span>
+          <span class="shortcut">Esc</span> 返回首页
+        </div>
+      </div>
+    </section>
+
+    <!-- 学习统计 -->
+    <section class="stats-section">
+      <div class="container">
+        <div class="stats-panel">
+          <div class="stat-item">
+            <div class="stat-value" id="totalCourses">5</div>
+            <div class="stat-label">课程总数</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value" id="totalChapters">23</div>
+            <div class="stat-label">章节目录</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value" id="totalQuestions">200+</div>
+            <div class="stat-label">练习题量</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value" id="studyProgress">0%</div>
+            <div class="stat-label">学习进度</div>
+          </div>
         </div>
       </div>
     </section>
@@ -106,6 +141,21 @@
       <p>五课融通 协同育人 | 思想道德与法治 · 中国近现代史纲要 · 马克思主义基本原理 · 毛概 · 习概</p>
     </div>
   </footer>
+
+  <!-- 浮动操作按钮 -->
+  <div class="fab-container" id="fabContainer">
+    <button class="fab-btn fab-secondary visible" onclick="toggleBookmark()" id="fabBookmark">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
+      </svg>
+    </button>
+    <button class="fab-btn fab-primary visible" onclick="showHome()" id="fabHome">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9z"></path>
+        <polyline points="9 22 9 12 15 12 15 22"></polyline>
+      </svg>
+    </button>
+  </div>
 
   <script src="data.js"></script>
   <script src="app.js"></script>
