@@ -317,6 +317,7 @@ function showSection(chIdx, secIdx) {
 
 // 显示考点
 function showExamPoints(chIdx) {
+  currentChIdx = chIdx;
   document.getElementById('btn-exam').classList.add('active');
   document.getElementById('btn-choice').classList.remove('active');
   document.getElementById('btn-multi').classList.remove('active');
@@ -331,8 +332,10 @@ function showExamPoints(chIdx) {
 
 // 显示选择题
 function showChoiceQuestions(chIdx) {
+  currentChIdx = chIdx;
   document.getElementById('btn-exam').classList.remove('active');
   document.getElementById('btn-choice').classList.add('active');
+  document.getElementById('btn-multi').classList.remove('active');
   document.getElementById('btn-essay').classList.remove('active');
   
   document.getElementById('contentArea').style.display = 'none';
@@ -344,6 +347,7 @@ function showChoiceQuestions(chIdx) {
 
 // 显示多选题
 function showMultiQuestions(chIdx) {
+  currentChIdx = chIdx;
   document.getElementById('btn-exam').classList.remove('active');
   document.getElementById('btn-choice').classList.remove('active');
   document.getElementById('btn-multi').classList.add('active');
@@ -432,6 +436,7 @@ function checkMultiAnswer(qIdx) {
 
 // 显示大题
 function showEssayQuestions(chIdx) {
+  currentChIdx = chIdx;
   document.getElementById('btn-exam').classList.remove('active');
   document.getElementById('btn-choice').classList.remove('active');
   document.getElementById('btn-multi').classList.remove('active');
