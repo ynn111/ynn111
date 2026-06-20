@@ -195,7 +195,16 @@ function showSection(chIdx, secIdx) {
           <circle cx="11" cy="11" r="7"></circle>
           <path d="m8 11 3 3 7-7"></path>
         </svg>
-        选择题
+        单选题
+      </button>
+      <button class="func-btn" onclick="showMultiQuestions(${chIdx})" id="btn-multi">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="7" height="7"></rect>
+          <rect x="14" y="3" width="7" height="7"></rect>
+          <rect x="14" y="14" width="7" height="7"></rect>
+          <rect x="3" y="14" width="7" height="7"></rect>
+        </svg>
+        多选题
       </button>
       <button class="func-btn" onclick="showEssayQuestions(${chIdx})" id="btn-essay">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -241,7 +250,7 @@ function showSection(chIdx, secIdx) {
     <div id="choiceQuestionsArea" style="display: none;">
       ${chapter.choiceQuestions?.map((q, idx) => `
         <div class="section-detail question-section">
-          <h3>选择题 ${idx + 1}</h3>
+          <h3>单选题 ${idx + 1}</h3>
           <div class="question-text">${q.question}</div>
           <div class="options-list">
             ${q.options.map((opt, optIdx) => `
@@ -257,7 +266,33 @@ function showSection(chIdx, secIdx) {
             <div class="analysis-content">${q.analysis}</div>
           </div>
         </div>
-      `).join('') || '<div class="section-detail"><p>暂无选择题</p></div>'}
+      `).join('') || '<div class="section-detail"><p>暂无单选题</p></div>'}
+    </div>
+    
+    <!-- 多选题区域 -->
+    <div id="multiQuestionsArea" style="display: none;">
+      ${chapter.multiQuestions?.map((q, idx) => `
+        <div class="section-detail question-section multi-question">
+          <h3>多选题 ${idx + 1}</h3>
+          <div class="question-text">${q.question}</div>
+          <div class="options-list multi-options">
+            ${q.options.map((opt, optIdx) => `
+              <div class="option-item multi-option" onclick="toggleMultiAnswer(${idx}, ${optIdx}, this)" data-selected="false">
+                <span class="option-letter">${String.fromCharCode(65 + optIdx)}</span>
+                <span class="option-text">${opt}</span>
+                <span class="option-status"></span>
+              </div>
+            `).join('')}
+          </div>
+          <div class="multi-submit-area">
+            <button class="multi-submit-btn" onclick="checkMultiAnswer(${idx})">提交答案</button>
+          </div>
+          <div class="question-analysis" id="multi-analysis-${idx}" style="display: none;">
+            <div class="analysis-title">💡 解析</div>
+            <div class="analysis-content">${q.analysis}</div>
+          </div>
+        </div>
+      `).join('') || '<div class="section-detail"><p>暂无多选题</p></div>'}
     </div>
     
     <!-- 大题区域 -->
@@ -284,10 +319,12 @@ function showSection(chIdx, secIdx) {
 function showExamPoints(chIdx) {
   document.getElementById('btn-exam').classList.add('active');
   document.getElementById('btn-choice').classList.remove('active');
+  document.getElementById('btn-multi').classList.remove('active');
   document.getElementById('btn-essay').classList.remove('active');
   
   document.getElementById('contentArea').style.display = 'none';
   document.getElementById('choiceQuestionsArea').style.display = 'none';
+  document.getElementById('multiQuestionsArea').style.display = 'none';
   document.getElementById('essayQuestionsArea').style.display = 'none';
   document.getElementById('examPointsArea').style.display = 'block';
 }
@@ -300,19 +337,110 @@ function showChoiceQuestions(chIdx) {
   
   document.getElementById('contentArea').style.display = 'none';
   document.getElementById('examPointsArea').style.display = 'none';
+  document.getElementById('multiQuestionsArea').style.display = 'none';
   document.getElementById('essayQuestionsArea').style.display = 'none';
   document.getElementById('choiceQuestionsArea').style.display = 'block';
+}
+
+// 显示多选题
+function showMultiQuestions(chIdx) {
+  document.getElementById('btn-exam').classList.remove('active');
+  document.getElementById('btn-choice').classList.remove('active');
+  document.getElementById('btn-multi').classList.add('active');
+  document.getElementById('btn-essay').classList.remove('active');
+  
+  document.getElementById('contentArea').style.display = 'none';
+  document.getElementById('examPointsArea').style.display = 'none';
+  document.getElementById('choiceQuestionsArea').style.display = 'none';
+  document.getElementById('essayQuestionsArea').style.display = 'none';
+  document.getElementById('multiQuestionsArea').style.display = 'block';
+}
+
+// 切换多选题选项选中状态
+function toggleMultiAnswer(qIdx, optIdx, element) {
+  const isSelected = element.getAttribute('data-selected') === 'true';
+  if (isSelected) {
+    element.setAttribute('data-selected', 'false');
+    element.classList.remove('selected');
+  } else {
+    element.setAttribute('data-selected', 'true');
+    element.classList.add('selected');
+  }
+}
+
+// 检查多选题答案
+function checkMultiAnswer(qIdx) {
+  const chapter = currentCourse.chapters[currentChIdx];
+  const question = chapter.multiQuestions[qIdx];
+  
+  // 获取用户选择的选项
+  const selectedOptions = [];
+  document.querySelectorAll(`#multiQuestionsArea .question-section:nth-child(${qIdx + 1}) .multi-option`).forEach((item, idx) => {
+    if (item.getAttribute('data-selected') === 'true') {
+      selectedOptions.push(idx);
+    }
+  });
+  
+  // 清除之前的样式
+  document.querySelectorAll(`#multiQuestionsArea .question-section:nth-child(${qIdx + 1}) .multi-option`).forEach(item => {
+    item.classList.remove('correct', 'wrong', 'selected');
+    item.querySelector('.option-status').innerHTML = '';
+  });
+  
+  // 检查答案是否正确
+  const correctAnswers = question.answer;
+  const isCorrect = selectedOptions.length === correctAnswers.length && 
+                    selectedOptions.every(idx => correctAnswers.includes(idx));
+  
+  if (isCorrect) {
+    quizStats.correct++;
+    showToast('回答正确！', 'success');
+    // 显示正确选项
+    correctAnswers.forEach(idx => {
+      const option = document.querySelectorAll(`#multiQuestionsArea .question-section:nth-child(${qIdx + 1}) .multi-option`)[idx];
+      option.classList.add('correct');
+      option.querySelector('.option-status').innerHTML = '✓';
+    });
+  } else {
+    quizStats.wrong++;
+    showToast('回答错误，已显示正确答案', 'error');
+    // 显示用户错误选择的选项
+    selectedOptions.forEach(idx => {
+      if (!correctAnswers.includes(idx)) {
+        const option = document.querySelectorAll(`#multiQuestionsArea .question-section:nth-child(${qIdx + 1}) .multi-option`)[idx];
+        option.classList.add('wrong');
+        option.querySelector('.option-status').innerHTML = '✗';
+      }
+    });
+    // 显示正确答案
+    correctAnswers.forEach(idx => {
+      const option = document.querySelectorAll(`#multiQuestionsArea .question-section:nth-child(${qIdx + 1}) .multi-option`)[idx];
+      option.classList.add('correct');
+      option.querySelector('.option-status').innerHTML = '✓';
+    });
+  }
+  
+  // 显示解析
+  document.getElementById(`multi-analysis-${qIdx}`).style.display = 'block';
+  
+  // 禁用提交按钮
+  document.querySelector(`#multiQuestionsArea .question-section:nth-child(${qIdx + 1}) .multi-submit-btn`).disabled = true;
+  
+  // 更新答题统计
+  updateQuizStats();
 }
 
 // 显示大题
 function showEssayQuestions(chIdx) {
   document.getElementById('btn-exam').classList.remove('active');
   document.getElementById('btn-choice').classList.remove('active');
+  document.getElementById('btn-multi').classList.remove('active');
   document.getElementById('btn-essay').classList.add('active');
   
   document.getElementById('contentArea').style.display = 'none';
   document.getElementById('examPointsArea').style.display = 'none';
   document.getElementById('choiceQuestionsArea').style.display = 'none';
+  document.getElementById('multiQuestionsArea').style.display = 'none';
   document.getElementById('essayQuestionsArea').style.display = 'block';
 }
 
