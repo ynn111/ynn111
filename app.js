@@ -244,7 +244,7 @@ function showSection(chIdx, secIdx) {
       <div class="section-detail exam-section">
         <h3>📌 ${section.title} 考点</h3>
         <ul class="exam-points-list">
-          ${chapter.examPoints?.filter((p, idx) => !p.sectionIndex || p.sectionIndex === secIdx).map((point, idx) => `<li><span class="point-num">${idx + 1}.</span>${point}</li>`).join('') || '<li>暂无考点信息</li>'}
+          ${chapter.examPoints?.filter((p, idx) => p.sectionIndex === undefined || p.sectionIndex === null || p.sectionIndex === secIdx).map((point, idx) => `<li><span class="point-num">${idx + 1}.</span>${point}</li>`).join('') || '<li>暂无考点信息</li>'}
         </ul>
       </div>
     </div>
@@ -252,10 +252,10 @@ function showSection(chIdx, secIdx) {
     <!-- 选择题区域 -->
     <div id="choiceQuestionsArea" style="display: none;">
       ${(() => {
-        const filteredQuestions = chapter.choiceQuestions?.filter(q => !q.sectionIndex || q.sectionIndex === secIdx) || [];
+        const filteredQuestions = chapter.choiceQuestions?.filter(q => q.sectionIndex === undefined || q.sectionIndex === null || q.sectionIndex === secIdx) || [];
         const questionIndexMap = {};
         chapter.choiceQuestions?.forEach((q, idx) => {
-          if (!q.sectionIndex || q.sectionIndex === secIdx) {
+          if (q.sectionIndex === undefined || q.sectionIndex === null || q.sectionIndex === secIdx) {
             questionIndexMap[idx] = questionIndexMap._count || 0;
             questionIndexMap._count = (questionIndexMap._count || 0) + 1;
           }
@@ -288,7 +288,7 @@ function showSection(chIdx, secIdx) {
     <!-- 多选题区域 -->
     <div id="multiQuestionsArea" style="display: none;">
       ${(() => {
-        const filteredQuestions = chapter.multiQuestions?.filter(q => !q.sectionIndex || q.sectionIndex === secIdx) || [];
+        const filteredQuestions = chapter.multiQuestions?.filter(q => q.sectionIndex === undefined || q.sectionIndex === null || q.sectionIndex === secIdx) || [];
         return filteredQuestions.length > 0 ? filteredQuestions.map((q, displayIdx) => {
           const originalIdx = chapter.multiQuestions.indexOf(q);
           return `
@@ -320,7 +320,7 @@ function showSection(chIdx, secIdx) {
     <!-- 大题区域 -->
     <div id="essayQuestionsArea" style="display: none;">
       ${(() => {
-        const filteredQuestions = chapter.essayQuestions?.filter(q => !q.sectionIndex || q.sectionIndex === secIdx) || [];
+        const filteredQuestions = chapter.essayQuestions?.filter(q => q.sectionIndex === undefined || q.sectionIndex === null || q.sectionIndex === secIdx) || [];
         return filteredQuestions.length > 0 ? filteredQuestions.map((q, displayIdx) => {
           const originalIdx = chapter.essayQuestions.indexOf(q);
           return `
