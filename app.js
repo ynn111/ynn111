@@ -299,7 +299,7 @@ function showSection(chIdx, secIdx) {
     <div id="essayQuestionsArea" style="display: none;">
       ${chapter.essayQuestions?.map((q, idx) => `
         <div class="section-detail essay-section">
-          <h3>论述题 ${idx + 1}</h3>
+          <h3>${q.type || '简答题'} ${idx + 1}</h3>
           <div class="question-text">${q.question}</div>
           <div class="answer-container">
             <button class="show-answer-btn" onclick="toggleAnswer(${idx})">展开答案</button>
