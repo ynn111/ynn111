@@ -149,6 +149,8 @@ function toggleChapter(idx) {
 
 // 当前章节索引
 let currentChIdx = 0;
+// 当前节索引
+let currentSecIdx = 0;
 
 // 显示节内容
 function showSection(chIdx, secIdx) {
@@ -156,6 +158,7 @@ function showSection(chIdx, secIdx) {
   const section = chapter.sections[secIdx];
   currentChapter = chapter;
   currentChIdx = chIdx;
+  currentSecIdx = secIdx;
   
   hideAllViews();
   document.getElementById('chapterView').style.display = 'block';
@@ -183,21 +186,21 @@ function showSection(chIdx, secIdx) {
   sectionList.innerHTML = `
     <!-- 功能按钮 -->
     <div class="function-buttons">
-      <button class="func-btn" onclick="showExamPoints(${chIdx})" id="btn-exam">
+      <button class="func-btn" onclick="showExamPoints(${chIdx}, ${secIdx})" id="btn-exam">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M12 20h9"></path>
           <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7.5 18H4v-3.686a2.121 2.121 0 0 1 3-3L16.5 3.5z"></path>
         </svg>
         考点
       </button>
-      <button class="func-btn" onclick="showChoiceQuestions(${chIdx})" id="btn-choice">
+      <button class="func-btn" onclick="showChoiceQuestions(${chIdx}, ${secIdx})" id="btn-choice">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <circle cx="11" cy="11" r="7"></circle>
           <path d="m8 11 3 3 7-7"></path>
         </svg>
         单选题
       </button>
-      <button class="func-btn" onclick="showMultiQuestions(${chIdx})" id="btn-multi">
+      <button class="func-btn" onclick="showMultiQuestions(${chIdx}, ${secIdx})" id="btn-multi">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <rect x="3" y="3" width="7" height="7"></rect>
           <rect x="14" y="3" width="7" height="7"></rect>
@@ -206,7 +209,7 @@ function showSection(chIdx, secIdx) {
         </svg>
         多选题
       </button>
-      <button class="func-btn" onclick="showEssayQuestions(${chIdx})" id="btn-essay">
+      <button class="func-btn" onclick="showEssayQuestions(${chIdx}, ${secIdx})" id="btn-essay">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
           <polyline points="14 2 14 8 20 8"></polyline>
@@ -239,76 +242,101 @@ function showSection(chIdx, secIdx) {
     <!-- 考点区域 -->
     <div id="examPointsArea" style="display: none;">
       <div class="section-detail exam-section">
-        <h3>📌 本章考点</h3>
+        <h3>📌 ${section.title} 考点</h3>
         <ul class="exam-points-list">
-          ${chapter.examPoints?.map((point, idx) => `<li><span class="point-num">${idx + 1}.</span>${point}</li>`).join('') || '<li>暂无考点信息</li>'}
+          ${chapter.examPoints?.filter((p, idx) => !p.sectionIndex || p.sectionIndex === secIdx).map((point, idx) => `<li><span class="point-num">${idx + 1}.</span>${point}</li>`).join('') || '<li>暂无考点信息</li>'}
         </ul>
       </div>
     </div>
     
     <!-- 选择题区域 -->
     <div id="choiceQuestionsArea" style="display: none;">
-      ${chapter.choiceQuestions?.map((q, idx) => `
-        <div class="section-detail question-section">
-          <h3>单选题 ${idx + 1}</h3>
-          <div class="question-text">${q.question}</div>
-          <div class="options-list">
-            ${q.options.map((opt, optIdx) => `
-              <div class="option-item" onclick="checkAnswer(${idx}, ${optIdx}, this)">
-                <span class="option-letter">${String.fromCharCode(65 + optIdx)}</span>
-                <span class="option-text">${opt}</span>
-                <span class="option-status"></span>
+      ${(() => {
+        const filteredQuestions = chapter.choiceQuestions?.filter(q => !q.sectionIndex || q.sectionIndex === secIdx) || [];
+        const questionIndexMap = {};
+        chapter.choiceQuestions?.forEach((q, idx) => {
+          if (!q.sectionIndex || q.sectionIndex === secIdx) {
+            questionIndexMap[idx] = questionIndexMap._count || 0;
+            questionIndexMap._count = (questionIndexMap._count || 0) + 1;
+          }
+        });
+        return filteredQuestions.length > 0 ? filteredQuestions.map((q, displayIdx) => {
+          const originalIdx = chapter.choiceQuestions.indexOf(q);
+          return `
+            <div class="section-detail question-section">
+              <h3>单选题 ${displayIdx + 1}</h3>
+              <div class="question-text">${q.question}</div>
+              <div class="options-list">
+                ${q.options.map((opt, optIdx) => `
+                  <div class="option-item" onclick="checkAnswer(${originalIdx}, ${optIdx}, this)">
+                    <span class="option-letter">${String.fromCharCode(65 + optIdx)}</span>
+                    <span class="option-text">${opt}</span>
+                    <span class="option-status"></span>
+                  </div>
+                `).join('')}
               </div>
-            `).join('')}
-          </div>
-          <div class="question-analysis" id="analysis-${idx}" style="display: none;">
-            <div class="analysis-title">💡 解析</div>
-            <div class="analysis-content">${q.analysis}</div>
-          </div>
-        </div>
-      `).join('') || '<div class="section-detail"><p>暂无单选题</p></div>'}
+              <div class="question-analysis" id="analysis-${originalIdx}" style="display: none;">
+                <div class="analysis-title">💡 解析</div>
+                <div class="analysis-content">${q.analysis}</div>
+              </div>
+            </div>
+          `;
+        }).join('') : '<div class="section-detail"><p>暂无单选题</p></div>';
+      })()}
     </div>
     
     <!-- 多选题区域 -->
     <div id="multiQuestionsArea" style="display: none;">
-      ${chapter.multiQuestions?.map((q, idx) => `
-        <div class="section-detail question-section multi-question">
-          <h3>多选题 ${idx + 1}</h3>
-          <div class="question-text">${q.question}</div>
-          <div class="options-list multi-options">
-            ${q.options.map((opt, optIdx) => `
-              <div class="option-item multi-option" onclick="toggleMultiAnswer(${idx}, ${optIdx}, this)" data-selected="false">
-                <span class="option-letter">${String.fromCharCode(65 + optIdx)}</span>
-                <span class="option-text">${opt}</span>
-                <span class="option-status"></span>
+      ${(() => {
+        const filteredQuestions = chapter.multiQuestions?.filter(q => !q.sectionIndex || q.sectionIndex === secIdx) || [];
+        return filteredQuestions.length > 0 ? filteredQuestions.map((q, displayIdx) => {
+          const originalIdx = chapter.multiQuestions.indexOf(q);
+          return `
+            <div class="section-detail question-section multi-question">
+              <h3>多选题 ${displayIdx + 1}</h3>
+              <div class="question-text">${q.question}</div>
+              <div class="options-list multi-options">
+                ${q.options.map((opt, optIdx) => `
+                  <div class="option-item multi-option" onclick="toggleMultiAnswer(${originalIdx}, ${optIdx}, this)" data-selected="false">
+                    <span class="option-letter">${String.fromCharCode(65 + optIdx)}</span>
+                    <span class="option-text">${opt}</span>
+                    <span class="option-status"></span>
+                  </div>
+                `).join('')}
               </div>
-            `).join('')}
-          </div>
-          <div class="multi-submit-area">
-            <button class="multi-submit-btn" onclick="checkMultiAnswer(${idx})">提交答案</button>
-          </div>
-          <div class="question-analysis" id="multi-analysis-${idx}" style="display: none;">
-            <div class="analysis-title">💡 解析</div>
-            <div class="analysis-content">${q.analysis}</div>
-          </div>
-        </div>
-      `).join('') || '<div class="section-detail"><p>暂无多选题</p></div>'}
+              <div class="multi-submit-area">
+                <button class="multi-submit-btn" onclick="checkMultiAnswer(${originalIdx})">提交答案</button>
+              </div>
+              <div class="question-analysis" id="multi-analysis-${originalIdx}" style="display: none;">
+                <div class="analysis-title">💡 解析</div>
+                <div class="analysis-content">${q.analysis}</div>
+              </div>
+            </div>
+          `;
+        }).join('') : '<div class="section-detail"><p>暂无多选题</p></div>';
+      })()}
     </div>
     
     <!-- 大题区域 -->
     <div id="essayQuestionsArea" style="display: none;">
-      ${chapter.essayQuestions?.map((q, idx) => `
-        <div class="section-detail essay-section">
-          <h3>${q.type || '简答题'} ${idx + 1}</h3>
-          <div class="question-text">${q.question}</div>
-          <div class="answer-container">
-            <button class="show-answer-btn" onclick="toggleAnswer(${idx})">展开答案</button>
-            <div class="essay-answer" id="essay-answer-${idx}" style="display: none;">
-              ${q.answer}
+      ${(() => {
+        const filteredQuestions = chapter.essayQuestions?.filter(q => !q.sectionIndex || q.sectionIndex === secIdx) || [];
+        return filteredQuestions.length > 0 ? filteredQuestions.map((q, displayIdx) => {
+          const originalIdx = chapter.essayQuestions.indexOf(q);
+          return `
+            <div class="section-detail essay-section">
+              <h3>${q.type || '简答题'} ${displayIdx + 1}</h3>
+              <div class="question-text">${q.question}</div>
+              <div class="answer-container">
+                <button class="show-answer-btn" onclick="toggleAnswer(${originalIdx})">展开答案</button>
+                <div class="essay-answer" id="essay-answer-${originalIdx}" style="display: none;">
+                  ${q.answer}
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
-      `).join('') || '<div class="section-detail"><p>暂无大题</p></div>'}
+          `;
+        }).join('') : '<div class="section-detail"><p>暂无大题</p></div>';
+      })()}
     </div>
   `;
   
@@ -316,8 +344,11 @@ function showSection(chIdx, secIdx) {
 }
 
 // 显示考点
-function showExamPoints(chIdx) {
+function showExamPoints(chIdx, secIdx) {
   currentChIdx = chIdx;
+  currentSecIdx = secIdx;
+  // 重新渲染内容
+  showSection(chIdx, secIdx);
   document.getElementById('btn-exam').classList.add('active');
   document.getElementById('btn-choice').classList.remove('active');
   document.getElementById('btn-multi').classList.remove('active');
@@ -331,8 +362,11 @@ function showExamPoints(chIdx) {
 }
 
 // 显示选择题
-function showChoiceQuestions(chIdx) {
+function showChoiceQuestions(chIdx, secIdx) {
   currentChIdx = chIdx;
+  currentSecIdx = secIdx;
+  // 重新渲染内容
+  showSection(chIdx, secIdx);
   document.getElementById('btn-exam').classList.remove('active');
   document.getElementById('btn-choice').classList.add('active');
   document.getElementById('btn-multi').classList.remove('active');
@@ -346,8 +380,11 @@ function showChoiceQuestions(chIdx) {
 }
 
 // 显示多选题
-function showMultiQuestions(chIdx) {
+function showMultiQuestions(chIdx, secIdx) {
   currentChIdx = chIdx;
+  currentSecIdx = secIdx;
+  // 重新渲染内容
+  showSection(chIdx, secIdx);
   document.getElementById('btn-exam').classList.remove('active');
   document.getElementById('btn-choice').classList.remove('active');
   document.getElementById('btn-multi').classList.add('active');
@@ -435,8 +472,11 @@ function checkMultiAnswer(qIdx) {
 }
 
 // 显示大题
-function showEssayQuestions(chIdx) {
+function showEssayQuestions(chIdx, secIdx) {
   currentChIdx = chIdx;
+  currentSecIdx = secIdx;
+  // 重新渲染内容
+  showSection(chIdx, secIdx);
   document.getElementById('btn-exam').classList.remove('active');
   document.getElementById('btn-choice').classList.remove('active');
   document.getElementById('btn-multi').classList.remove('active');
