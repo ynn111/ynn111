@@ -2,14 +2,82 @@ let currentCourse = null;
 let currentChapter = null;
 let quizStats = { correct: 0, wrong: 0 };
 
+// 当前用户
+let currentUser = null;
+
+// 用户数据存储
+let users = loadUsers();
+
+// 加载用户数据
+function loadUsers() {
+  try {
+    const saved = localStorage.getItem('learningUsers');
+    return saved ? JSON.parse(saved) : {};
+  } catch (e) {
+    return {};
+  }
+}
+
+// 保存用户数据
+function saveUsers() {
+  localStorage.setItem('learningUsers', JSON.stringify(users));
+}
+
 // 学习进度存储
-let learningProgress = loadLearningProgress();
+let learningProgress = {};
 
 // 加载学习进度
 function loadLearningProgress() {
   try {
-    const saved = localStorage.getItem('learningProgress');
-    return saved ? JSON.parse(saved) : {};
+    if (currentUser) {
+      // 已登录用户，加载用户专属进度
+      const saved = localStorage.getItem(`learningProgress_${currentUser.id}`);
+      const userProgress = saved ? JSON.parse(saved) : {};
+      
+      // 检查是否有临时进度需要合并
+      const tempSaved = localStorage.getItem('tempLearningProgress');
+      if (tempSaved) {
+        const tempProgress = JSON.parse(tempSaved);
+        // 合并临时进度到用户进度
+        Object.keys(tempProgress).forEach(courseId => {
+          if (!userProgress[courseId]) {
+            userProgress[courseId] = tempProgress[courseId];
+          } else {
+            Object.keys(tempProgress[courseId]).forEach(chapterId => {
+              if (!userProgress[courseId][chapterId]) {
+                userProgress[courseId][chapterId] = tempProgress[courseId][chapterId];
+              } else {
+                // 合并节进度
+                if (tempProgress[courseId][chapterId].sections) {
+                  Object.assign(userProgress[courseId][chapterId].sections, tempProgress[courseId][chapterId].sections);
+                }
+                // 合并答题统计
+                if (tempProgress[courseId][chapterId].questions) {
+                  Object.keys(tempProgress[courseId][chapterId].questions).forEach(sectionId => {
+                    if (!userProgress[courseId][chapterId].questions[sectionId]) {
+                      userProgress[courseId][chapterId].questions[sectionId] = tempProgress[courseId][chapterId].questions[sectionId];
+                    } else {
+                      userProgress[courseId][chapterId].questions[sectionId].correct += tempProgress[courseId][chapterId].questions[sectionId].correct || 0;
+                      userProgress[courseId][chapterId].questions[sectionId].total += tempProgress[courseId][chapterId].questions[sectionId].total || 0;
+                    }
+                  });
+                }
+              }
+            });
+          }
+        });
+        // 清除临时进度
+        localStorage.removeItem('tempLearningProgress');
+        // 保存合并后的进度
+        localStorage.setItem(`learningProgress_${currentUser.id}`, JSON.stringify(userProgress));
+      }
+      
+      return userProgress;
+    } else {
+      // 未登录用户，加载临时进度
+      const saved = localStorage.getItem('tempLearningProgress');
+      return saved ? JSON.parse(saved) : {};
+    }
   } catch (e) {
     return {};
   }
@@ -17,7 +85,17 @@ function loadLearningProgress() {
 
 // 保存学习进度
 function saveLearningProgress() {
-  localStorage.setItem('learningProgress', JSON.stringify(learningProgress));
+  try {
+    if (currentUser) {
+      // 已登录用户，保存到用户专属进度
+      localStorage.setItem(`learningProgress_${currentUser.id}`, JSON.stringify(learningProgress));
+    } else {
+      // 未登录用户，保存到临时进度
+      localStorage.setItem('tempLearningProgress', JSON.stringify(learningProgress));
+    }
+  } catch (e) {
+    console.error('保存学习进度失败:', e);
+  }
 }
 
 // 更新学习进度
@@ -42,6 +120,9 @@ function updateProgress(courseId, chapterId, sectionId, type, completed = true) 
   }
   
   saveLearningProgress();
+  // 更新UI显示
+  renderCourseCards();
+  updateGlobalStats();
 }
 
 // 获取课程学习进度
@@ -54,8 +135,9 @@ function getCourseProgress(courseId) {
   
   course.chapters.forEach(chapter => {
     totalSections += chapter.sections?.length || 0;
-    if (learningProgress[courseId][chapter.id]) {
-      completedSections += Object.values(learningProgress[courseId][chapter.id].sections || {}).filter(Boolean).length;
+    const chapterProgress = learningProgress[courseId][chapter.id];
+    if (chapterProgress) {
+      completedSections += Object.values(chapterProgress.sections || {}).filter(Boolean).length;
     }
   });
   
@@ -92,18 +174,196 @@ function getQuizStats(courseId) {
   return { correct, total };
 }
 
+// 获取全局统计
+function getGlobalStats() {
+  let totalCorrect = 0;
+  let totalQuestions = 0;
+  let totalCompleted = 0;
+  let totalSections = 0;
+  
+  courses.forEach(course => {
+    const stats = getQuizStats(course.id);
+    totalCorrect += stats.correct;
+    totalQuestions += stats.total;
+    
+    course.chapters.forEach(chapter => {
+      totalSections += chapter.sections?.length || 0;
+      if (learningProgress[course.id]?.[chapter.id]) {
+        totalCompleted += Object.values(learningProgress[course.id][chapter.id].sections || {}).filter(Boolean).length;
+      }
+    });
+  });
+  
+  return {
+    correct: totalCorrect,
+    total: totalQuestions,
+    completed: totalCompleted,
+    totalSections: totalSections,
+    accuracy: totalQuestions > 0 ? Math.round((totalCorrect / totalQuestions) * 100) : 0,
+    progress: totalSections > 0 ? Math.round((totalCompleted / totalSections) * 100) : 0
+  };
+}
+
+// 更新全局统计显示
+function updateGlobalStats() {
+  const stats = getGlobalStats();
+  document.getElementById('studyProgress').textContent = `${stats.progress}%`;
+}
+
 // 清除学习进度
 function clearProgress() {
   learningProgress = {};
   saveLearningProgress();
   showToast('学习进度已清除', 'info');
   renderCourseCards();
+  updateGlobalStats();
+}
+
+// 用户注册
+function registerUser(username, password) {
+  if (users[username]) {
+    return { success: false, message: '用户名已存在' };
+  }
+  
+  const userId = Date.now().toString();
+  users[username] = {
+    id: userId,
+    username: username,
+    password: password,
+    createdAt: new Date().toISOString()
+  };
+  saveUsers();
+  return { success: true, message: '注册成功' };
+}
+
+// 用户登录
+function loginUser(username, password) {
+  const user = users[username];
+  if (!user) {
+    return { success: false, message: '用户名不存在' };
+  }
+  if (user.password !== password) {
+    return { success: false, message: '密码错误' };
+  }
+  
+  currentUser = user;
+  learningProgress = loadLearningProgress();
+  return { success: true, message: '登录成功' };
+}
+
+// 用户注销
+function logoutUser() {
+  currentUser = null;
+  learningProgress = {};
+  localStorage.removeItem('currentUserId');
+  showToast('已退出登录', 'info');
+  renderCourseCards();
+  updateGlobalStats();
+  updateUserMenu();
+}
+
+// 检查是否有记住的用户
+function checkRememberedUser() {
+  const rememberedUserId = localStorage.getItem('currentUserId');
+  if (rememberedUserId) {
+    // 找到对应的用户
+    const user = Object.values(users).find(u => u.id === rememberedUserId);
+    if (user) {
+      currentUser = user;
+      learningProgress = loadLearningProgress();
+    }
+  }
+}
+
+// 更新用户菜单
+function updateUserMenu() {
+  const userMenu = document.getElementById('userMenu');
+  if (currentUser) {
+    userMenu.innerHTML = `
+      <div class="user-info">
+        <span class="user-name">${currentUser.username}</span>
+      </div>
+      <button class="logout-btn" onclick="logoutUser()">退出登录</button>
+    `;
+  } else {
+    userMenu.innerHTML = `
+      <button class="login-btn" onclick="showLoginModal()">登录</button>
+      <button class="register-btn" onclick="showRegisterModal()">注册</button>
+    `;
+  }
+}
+
+// 显示登录弹窗
+function showLoginModal() {
+  document.getElementById('loginModal').style.display = 'flex';
+}
+
+// 显示注册弹窗
+function showRegisterModal() {
+  document.getElementById('registerModal').style.display = 'flex';
+}
+
+// 关闭弹窗
+function closeModal(modalId) {
+  document.getElementById(modalId).style.display = 'none';
+}
+
+// 执行注册
+function doRegister() {
+  const username = document.getElementById('registerUsername').value;
+  const password = document.getElementById('registerPassword').value;
+  const confirmPassword = document.getElementById('registerConfirmPassword').value;
+  
+  if (!username || !password) {
+    showToast('请填写用户名和密码', 'error');
+    return;
+  }
+  
+  if (password !== confirmPassword) {
+    showToast('两次输入的密码不一致', 'error');
+    return;
+  }
+  
+  const result = registerUser(username, password);
+  showToast(result.message, result.success ? 'success' : 'error');
+  
+  if (result.success) {
+    closeModal('registerModal');
+  }
+}
+
+// 执行登录
+function doLogin() {
+  const username = document.getElementById('loginUsername').value;
+  const password = document.getElementById('loginPassword').value;
+  const rememberMe = document.getElementById('rememberMe').checked;
+  
+  if (!username || !password) {
+    showToast('请填写用户名和密码', 'error');
+    return;
+  }
+  
+  const result = loginUser(username, password);
+  showToast(result.message, result.success ? 'success' : 'error');
+  
+  if (result.success) {
+    if (rememberMe) {
+      localStorage.setItem('currentUserId', currentUser.id);
+    }
+    closeModal('loginModal');
+    updateUserMenu();
+    renderCourseCards();
+    updateGlobalStats();
+  }
 }
 
 // 初始化
 document.addEventListener('DOMContentLoaded', () => {
+  checkRememberedUser();
   renderCourseCards();
   createBackToTopButton();
+  updateUserMenu();
+  updateGlobalStats();
   
   // 绑定回车搜索
   document.getElementById('heroSearch')?.addEventListener('keypress', (e) => {
@@ -215,26 +475,34 @@ function showCourse(courseId) {
   // 渲染章节列表
   const chapterList = document.getElementById('chapterList');
   chapterList.className = 'chapter-list';
-  chapterList.innerHTML = currentCourse.chapters.map((ch, idx) => `
-    <div class="chapter-item" id="chapter-${idx}">
-      <div class="chapter-title-bar" onclick="toggleChapter(${idx})">
-        <h3>${ch.title}</h3>
-        <svg class="chapter-toggle" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polyline points="6 9 12 15 18 9"></polyline>
-        </svg>
+  chapterList.innerHTML = currentCourse.chapters.map((ch, idx) => {
+    const progress = getChapterProgress(courseId, ch.id);
+    return `
+      <div class="chapter-item" id="chapter-${idx}">
+        <div class="chapter-title-bar" onclick="toggleChapter(${idx})">
+          <h3>${ch.title}</h3>
+          <span class="chapter-progress-badge">${progress}%</span>
+          <svg class="chapter-toggle" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </div>
+        <div class="chapter-sections">
+          ${ch.sections.map((sec, sidx) => {
+            const isCompleted = learningProgress[courseId]?.[ch.id]?.sections?.[sidx];
+            return `
+              <div class="section-item" onclick="showSection(${idx}, ${sidx})">
+                <div class="section-status">${isCompleted ? '✓' : ''}</div>
+                <h4>${sec.title}</h4>
+                <div class="section-keypoints">
+                  ${sec.keyPoints.map(kp => `<span class="keypoint-tag">${kp}</span>`).join('')}
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
       </div>
-      <div class="chapter-sections">
-        ${ch.sections.map((sec, sidx) => `
-          <div class="section-item" onclick="showSection(${idx}, ${sidx})">
-            <h4>${sec.title}</h4>
-            <div class="section-keypoints">
-              ${sec.keyPoints.map(kp => `<span class="keypoint-tag">${kp}</span>`).join('')}
-            </div>
-          </div>
-        `).join('')}
-      </div>
-    </div>
-  `).join('');
+    `;
+  }).join('');
   
   window.scrollTo(0, 0);
 }
@@ -350,105 +618,98 @@ function showSection(chIdx, secIdx) {
       </div>
     </div>
     
-    <!-- 选择题区域 -->
+    <!-- 单选题区域 -->
     <div id="choiceQuestionsArea" style="display: none;">
-      ${(() => {
-        const filteredQuestions = chapter.choiceQuestions?.filter(q => q.sectionIndex === undefined || q.sectionIndex === null || q.sectionIndex === secIdx) || [];
-        const questionIndexMap = {};
-        chapter.choiceQuestions?.forEach((q, idx) => {
-          if (q.sectionIndex === undefined || q.sectionIndex === null || q.sectionIndex === secIdx) {
-            questionIndexMap[idx] = questionIndexMap._count || 0;
-            questionIndexMap._count = (questionIndexMap._count || 0) + 1;
-          }
-        });
-        return filteredQuestions.length > 0 ? filteredQuestions.map((q, displayIdx) => {
-          const originalIdx = chapter.choiceQuestions.indexOf(q);
-          return `
-            <div class="section-detail question-section">
-              <h3>单选题 ${displayIdx + 1}</h3>
-              <div class="question-text">${q.question}</div>
+      <div class="section-detail questions-section">
+        <h3>📝 单选题练习</h3>
+        <div class="questions-container">
+          ${chapter.choiceQuestions?.filter(q => q.sectionIndex === undefined || q.sectionIndex === null || q.sectionIndex === secIdx).map((q, idx) => `
+            <div class="question-section">
+              <div class="question-header">
+                <span class="question-num">${idx + 1}.</span>
+                <span class="question-text">${q.question}</span>
+              </div>
               <div class="options-list">
                 ${q.options.map((opt, optIdx) => `
-                  <div class="option-item" onclick="checkAnswer(${originalIdx}, ${optIdx}, this)">
-                    <span class="option-letter">${String.fromCharCode(65 + optIdx)}</span>
+                  <div class="option-item" onclick="checkAnswer(${idx}, ${optIdx}, this)">
+                    <span class="option-label">${String.fromCharCode(65 + optIdx)}</span>
                     <span class="option-text">${opt}</span>
                     <span class="option-status"></span>
                   </div>
                 `).join('')}
               </div>
-              <div class="question-analysis" id="analysis-${originalIdx}" style="display: none;">
-                <div class="analysis-title">💡 解析</div>
-                <div class="analysis-content">${q.analysis}</div>
+              <div class="analysis" id="analysis-${idx}" style="display: none;">
+                <strong>解析：</strong>${q.analysis || '暂无解析'}
               </div>
             </div>
-          `;
-        }).join('') : '<div class="section-detail"><p>暂无单选题</p></div>';
-      })()}
+          `).join('') || '<p>暂无练习题</p>'}
+        </div>
+      </div>
     </div>
     
     <!-- 多选题区域 -->
     <div id="multiQuestionsArea" style="display: none;">
-      ${(() => {
-        const filteredQuestions = chapter.multiQuestions?.filter(q => q.sectionIndex === undefined || q.sectionIndex === null || q.sectionIndex === secIdx) || [];
-        return filteredQuestions.length > 0 ? filteredQuestions.map((q, displayIdx) => {
-          const originalIdx = chapter.multiQuestions.indexOf(q);
-          return `
-            <div class="section-detail question-section multi-question">
-              <h3>多选题 ${displayIdx + 1}</h3>
-              <div class="question-text">${q.question}</div>
-              <div class="options-list multi-options">
+      <div class="section-detail questions-section">
+        <h3>📝 多选题练习</h3>
+        <div class="questions-container">
+          ${chapter.multiQuestions?.filter(q => q.sectionIndex === undefined || q.sectionIndex === null || q.sectionIndex === secIdx).map((q, idx) => `
+            <div class="question-section">
+              <div class="question-header">
+                <span class="question-num">${idx + 1}.</span>
+                <span class="question-text">${q.question}</span>
+              </div>
+              <div class="options-list">
                 ${q.options.map((opt, optIdx) => `
-                  <div class="option-item multi-option" onclick="toggleMultiAnswer(${originalIdx}, ${optIdx}, this)" data-selected="false">
-                    <span class="option-letter">${String.fromCharCode(65 + optIdx)}</span>
+                  <div class="multi-option" data-selected="false" onclick="toggleMultiAnswer(${idx}, ${optIdx}, this)">
+                    <span class="option-label">${String.fromCharCode(65 + optIdx)}</span>
                     <span class="option-text">${opt}</span>
                     <span class="option-status"></span>
                   </div>
                 `).join('')}
               </div>
-              <div class="multi-submit-area">
-                <button class="multi-submit-btn" onclick="checkMultiAnswer(${originalIdx})">提交答案</button>
-              </div>
-              <div class="question-analysis" id="multi-analysis-${originalIdx}" style="display: none;">
-                <div class="analysis-title">💡 解析</div>
-                <div class="analysis-content">${q.analysis}</div>
+              <button class="multi-submit-btn" onclick="checkMultiAnswer(${idx})">提交答案</button>
+              <div class="analysis" id="multi-analysis-${idx}" style="display: none;">
+                <strong>解析：</strong>${q.analysis || '暂无解析'}
               </div>
             </div>
-          `;
-        }).join('') : '<div class="section-detail"><p>暂无多选题</p></div>';
-      })()}
+          `).join('') || '<p>暂无练习题</p>'}
+        </div>
+      </div>
     </div>
     
     <!-- 大题区域 -->
     <div id="essayQuestionsArea" style="display: none;">
-      ${(() => {
-        const filteredQuestions = chapter.essayQuestions?.filter(q => q.sectionIndex === undefined || q.sectionIndex === null || q.sectionIndex === secIdx) || [];
-        return filteredQuestions.length > 0 ? filteredQuestions.map((q, displayIdx) => {
-          const originalIdx = chapter.essayQuestions.indexOf(q);
-          return `
-            <div class="section-detail essay-section">
-              <h3>${q.type || '简答题'} ${displayIdx + 1}</h3>
-              <div class="question-text">${q.question}</div>
-              <div class="answer-container">
-                <button class="show-answer-btn" onclick="toggleAnswer(${originalIdx})">展开答案</button>
-                <div class="essay-answer" id="essay-answer-${originalIdx}" style="display: none;">
-                  ${q.answer}
-                </div>
+      <div class="section-detail questions-section">
+        <h3>📝 简答题/论述题</h3>
+        <div class="questions-container">
+          ${chapter.essayQuestions?.filter(q => q.sectionIndex === undefined || q.sectionIndex === null || q.sectionIndex === secIdx).map((q, idx) => `
+            <div class="essay-question">
+              <div class="question-header">
+                <span class="question-num">${idx + 1}.</span>
+                <span class="question-text">${q.question}</span>
+              </div>
+              <button class="toggle-answer-btn" onclick="toggleEssayAnswer(${idx})">${q.type === 'discussion' ? '查看论述' : '查看答案'}</button>
+              <div class="essay-answer" id="essay-answer-${idx}" style="display: none;">
+                <strong>答案：</strong>
+                <p>${q.answer}</p>
               </div>
             </div>
-          `;
-        }).join('') : '<div class="section-detail"><p>暂无大题</p></div>';
-      })()}
+          `).join('') || '<p>暂无大题</p>'}
+        </div>
+      </div>
     </div>
   `;
-  
-  window.scrollTo(0, 0);
+}
+
+// 返回课程页面
+function backToCourse() {
+  showCourse(currentCourse.id);
 }
 
 // 显示考点
 function showExamPoints(chIdx, secIdx) {
   currentChIdx = chIdx;
   currentSecIdx = secIdx;
-  // 重新渲染内容
   showSection(chIdx, secIdx);
   document.getElementById('btn-exam').classList.add('active');
   document.getElementById('btn-choice').classList.remove('active');
@@ -456,17 +717,16 @@ function showExamPoints(chIdx, secIdx) {
   document.getElementById('btn-essay').classList.remove('active');
   
   document.getElementById('contentArea').style.display = 'none';
+  document.getElementById('examPointsArea').style.display = 'block';
   document.getElementById('choiceQuestionsArea').style.display = 'none';
   document.getElementById('multiQuestionsArea').style.display = 'none';
   document.getElementById('essayQuestionsArea').style.display = 'none';
-  document.getElementById('examPointsArea').style.display = 'block';
 }
 
-// 显示选择题
+// 显示单选题
 function showChoiceQuestions(chIdx, secIdx) {
   currentChIdx = chIdx;
   currentSecIdx = secIdx;
-  // 重新渲染内容
   showSection(chIdx, secIdx);
   document.getElementById('btn-exam').classList.remove('active');
   document.getElementById('btn-choice').classList.add('active');
@@ -475,16 +735,15 @@ function showChoiceQuestions(chIdx, secIdx) {
   
   document.getElementById('contentArea').style.display = 'none';
   document.getElementById('examPointsArea').style.display = 'none';
+  document.getElementById('choiceQuestionsArea').style.display = 'block';
   document.getElementById('multiQuestionsArea').style.display = 'none';
   document.getElementById('essayQuestionsArea').style.display = 'none';
-  document.getElementById('choiceQuestionsArea').style.display = 'block';
 }
 
 // 显示多选题
 function showMultiQuestions(chIdx, secIdx) {
   currentChIdx = chIdx;
   currentSecIdx = secIdx;
-  // 重新渲染内容
   showSection(chIdx, secIdx);
   document.getElementById('btn-exam').classList.remove('active');
   document.getElementById('btn-choice').classList.remove('active');
@@ -494,8 +753,38 @@ function showMultiQuestions(chIdx, secIdx) {
   document.getElementById('contentArea').style.display = 'none';
   document.getElementById('examPointsArea').style.display = 'none';
   document.getElementById('choiceQuestionsArea').style.display = 'none';
-  document.getElementById('essayQuestionsArea').style.display = 'none';
   document.getElementById('multiQuestionsArea').style.display = 'block';
+  document.getElementById('essayQuestionsArea').style.display = 'none';
+}
+
+// 显示大题
+function showEssayQuestions(chIdx, secIdx) {
+  currentChIdx = chIdx;
+  currentSecIdx = secIdx;
+  showSection(chIdx, secIdx);
+  document.getElementById('btn-exam').classList.remove('active');
+  document.getElementById('btn-choice').classList.remove('active');
+  document.getElementById('btn-multi').classList.remove('active');
+  document.getElementById('btn-essay').classList.add('active');
+  
+  document.getElementById('contentArea').style.display = 'none';
+  document.getElementById('examPointsArea').style.display = 'none';
+  document.getElementById('choiceQuestionsArea').style.display = 'none';
+  document.getElementById('multiQuestionsArea').style.display = 'none';
+  document.getElementById('essayQuestionsArea').style.display = 'block';
+}
+
+// 切换大题答案显示
+function toggleEssayAnswer(idx) {
+  const answer = document.getElementById(`essay-answer-${idx}`);
+  const btn = document.querySelector(`#essayQuestionsArea .essay-question:nth-child(${idx + 1}) .toggle-answer-btn`);
+  if (answer.style.display === 'none') {
+    answer.style.display = 'block';
+    btn.textContent = '收起答案';
+  } else {
+    answer.style.display = 'none';
+    btn.textContent = '查看答案';
+  }
 }
 
 // 切换多选题选项选中状态
@@ -513,7 +802,12 @@ function toggleMultiAnswer(qIdx, optIdx, element) {
 // 检查多选题答案
 function checkMultiAnswer(qIdx) {
   const chapter = currentCourse.chapters[currentChIdx];
-  const question = chapter.multiQuestions[qIdx];
+  const question = chapter.multiQuestions?.find((q, idx) => {
+    const idxInSection = chapter.multiQuestions?.filter(q2 => q2.sectionIndex === undefined || q2.sectionIndex === null || q2.sectionIndex === currentSecIdx).indexOf(q);
+    return idxInSection === qIdx;
+  });
+  
+  if (!question) return;
   
   // 获取用户选择的选项
   const selectedOptions = [];
@@ -576,28 +870,15 @@ function checkMultiAnswer(qIdx) {
   updateQuizStats();
 }
 
-// 显示大题
-function showEssayQuestions(chIdx, secIdx) {
-  currentChIdx = chIdx;
-  currentSecIdx = secIdx;
-  // 重新渲染内容
-  showSection(chIdx, secIdx);
-  document.getElementById('btn-exam').classList.remove('active');
-  document.getElementById('btn-choice').classList.remove('active');
-  document.getElementById('btn-multi').classList.remove('active');
-  document.getElementById('btn-essay').classList.add('active');
-  
-  document.getElementById('contentArea').style.display = 'none';
-  document.getElementById('examPointsArea').style.display = 'none';
-  document.getElementById('choiceQuestionsArea').style.display = 'none';
-  document.getElementById('multiQuestionsArea').style.display = 'none';
-  document.getElementById('essayQuestionsArea').style.display = 'block';
-}
-
 // 检查选择题答案
 function checkAnswer(qIdx, optIdx, element) {
   const chapter = currentCourse.chapters[currentChIdx];
-  const question = chapter.choiceQuestions[qIdx];
+  
+  // 找到当前小节对应的题目索引
+  const sectionQuestions = chapter.choiceQuestions?.filter(q => q.sectionIndex === undefined || q.sectionIndex === null || q.sectionIndex === currentSecIdx) || [];
+  const question = sectionQuestions[qIdx];
+  
+  if (!question) return;
   
   // 清除之前的样式
   document.querySelectorAll(`#choiceQuestionsArea .question-section:nth-child(${qIdx + 1}) .option-item`).forEach(item => {
@@ -608,7 +889,7 @@ function checkAnswer(qIdx, optIdx, element) {
   // 添加当前选择样式
   element.classList.add('selected');
   
-  // 判断是单选题还是多选题
+  // 判断是多选题还是单选题
   if (Array.isArray(question.answer)) {
     // 多选题逻辑
     const isCorrect = question.answer.includes(optIdx);
@@ -680,132 +961,242 @@ function checkAnswer(qIdx, optIdx, element) {
   updateQuizStats();
 }
 
-// 显示提示消息
-function showToast(message, type = 'info') {
-  // 移除已存在的toast
-  const existingToast = document.getElementById('toast');
-  if (existingToast) existingToast.remove();
-  
-  const toast = document.createElement('div');
-  toast.id = 'toast';
-  toast.className = `toast toast-${type}`;
-  toast.textContent = message;
-  toast.style.cssText = `
-    position: fixed;
-    top: 100px;
-    left: 50%;
-    transform: translateX(-50%);
-    padding: 14px 24px;
-    background: ${type === 'success' ? '#38a169' : type === 'error' ? '#fc8181' : '#4a5568'};
-    color: white;
-    border-radius: 8px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-    z-index: 1001;
-    animation: slideDown 0.3s ease-out;
-  `;
-  
-  document.body.appendChild(toast);
-  
-  setTimeout(() => {
-    toast.style.animation = 'slideUp 0.3s ease-out';
-    setTimeout(() => toast.remove(), 300);
-  }, 2000);
-}
-
-// 更新答题统计
+// 更新答题统计显示
 function updateQuizStats() {
-  let statsBar = document.getElementById('quizStatsBar');
-  if (!statsBar) {
-    statsBar = document.createElement('div');
-    statsBar.id = 'quizStatsBar';
-    statsBar.style.cssText = `
-      position: fixed;
-      top: 64px;
-      left: 0;
-      right: 0;
-      background: white;
-      padding: 10px 24px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-      display: flex;
-      justify-content: center;
-      gap: 30px;
-      z-index: 99;
-      animation: slideDown 0.3s ease-out;
+  const stats = document.getElementById('quizStats');
+  if (stats) {
+    stats.innerHTML = `
+      <span>正确: ${quizStats.correct}</span>
+      <span>错误: ${quizStats.wrong}</span>
     `;
-    document.body.appendChild(statsBar);
+  }
+}
+
+// 搜索功能
+function doSearch() {
+  const query = document.getElementById('heroSearch')?.value || document.getElementById('searchInput')?.value || '';
+  if (!query.trim()) return;
+  
+  hideAllViews();
+  
+  // 创建搜索结果视图
+  let searchView = document.getElementById('searchView');
+  if (!searchView) {
+    searchView = document.createElement('div');
+    searchView.id = 'searchView';
+    document.body.appendChild(searchView);
   }
   
-  const total = quizStats.correct + quizStats.wrong;
-  const accuracy = total > 0 ? Math.round((quizStats.correct / total) * 100) : 0;
+  searchView.style.display = 'block';
+  updateNavActive(2);
   
-  statsBar.innerHTML = `
-    <span style="color: #38a169; font-weight: 600;">✓ 正确: ${quizStats.correct}</span>
-    <span style="color: #fc8181; font-weight: 600;">✗ 错误: ${quizStats.wrong}</span>
-    <span style="color: #1a365d; font-weight: 600;">准确率: ${accuracy}%</span>
+  // 搜索逻辑
+  const results = [];
+  
+  courses.forEach(course => {
+    course.chapters.forEach(chapter => {
+      // 搜索章节标题
+      if (chapter.title.includes(query)) {
+        results.push({
+          type: 'chapter',
+          course: course,
+          chapter: chapter,
+          match: chapter.title
+        });
+      }
+      
+      // 搜索节标题
+      chapter.sections.forEach(section => {
+        if (section.title.includes(query)) {
+          results.push({
+            type: 'section',
+            course: course,
+            chapter: chapter,
+            section: section,
+            match: section.title
+          });
+        }
+        
+        // 搜索知识点
+        section.keyPoints.forEach(kp => {
+          if (kp.includes(query)) {
+            results.push({
+              type: 'keypoint',
+              course: course,
+              chapter: chapter,
+              section: section,
+              match: kp
+            });
+          }
+        });
+      });
+      
+      // 搜索考点
+      chapter.examPoints?.forEach(point => {
+        if (point.includes(query)) {
+          results.push({
+            type: 'exampoint',
+            course: course,
+            chapter: chapter,
+            match: point
+          });
+        }
+      });
+      
+      // 搜索题目
+      chapter.choiceQuestions?.forEach(q => {
+        if (q.question.includes(query)) {
+          results.push({
+            type: 'question',
+            course: course,
+            chapter: chapter,
+            match: q.question.substring(0, 50) + '...'
+          });
+        }
+      });
+      
+      chapter.multiQuestions?.forEach(q => {
+        if (q.question.includes(query)) {
+          results.push({
+            type: 'question',
+            course: course,
+            chapter: chapter,
+            match: q.question.substring(0, 50) + '...'
+          });
+        }
+      });
+      
+      chapter.essayQuestions?.forEach(q => {
+        if (q.question.includes(query)) {
+          results.push({
+            type: 'essay',
+            course: course,
+            chapter: chapter,
+            match: q.question.substring(0, 50) + '...'
+          });
+        }
+      });
+    });
+  });
+  
+  // 渲染搜索结果
+  searchView.innerHTML = `
+    <div class="search-header">
+      <div class="container">
+        <h2>资料检索结果</h2>
+        <div class="search-box-inline">
+          <input type="text" id="searchInput" placeholder="搜索课程章节、知识点..." value="${query}">
+          <button onclick="doSearch()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <circle cx="11" cy="11" r="8"></circle>
+              <path d="m21 21-4.35-4.35"></path>
+            </svg>
+          </button>
+        </div>
+        <p>找到 ${results.length} 条结果</p>
+      </div>
+    </div>
+    <div class="container search-results">
+      ${results.length > 0 ? results.map((result, idx) => `
+        <div class="search-item" onclick="handleSearchResult('${result.course.id}', ${result.chapter.id}, ${result.section ? result.chapter.sections.indexOf(result.section) : 0})">
+          <div class="result-type">${result.type === 'chapter' ? '章节' : result.type === 'section' ? '节' : result.type === 'keypoint' ? '知识点' : result.type === 'exampoint' ? '考点' : result.type === 'essay' ? '大题' : '练习题'}</div>
+          <div class="result-title">${highlightText(result.match, query)}</div>
+          <div class="result-path">${result.course.shortName} > ${result.chapter.title}${result.section ? ' > ' + result.section.title : ''}</div>
+        </div>
+      `).join('') : '<div class="no-results">未找到相关结果</div>'}
+    </div>
   `;
 }
 
-// 添加动画样式到head
-const style = document.createElement('style');
-style.textContent = `
-  @keyframes slideDown {
-    from { transform: translateY(-100%); opacity: 0; }
-    to { transform: translateY(0); opacity: 1; }
-  }
-  @keyframes slideUp {
-    from { transform: translateX(-50%) translateY(0); opacity: 1; }
-    to { transform: translateX(-50%) translateY(-20px); opacity: 0; }
-  }
-`;
-document.head.appendChild(style);
+// 处理搜索结果点击
+function handleSearchResult(courseId, chapterId, sectionIdx) {
+  showCourse(courseId);
+  setTimeout(() => {
+    const chapter = courses.find(c => c.id === courseId)?.chapters.find(ch => ch.id === chapterId);
+    if (chapter) {
+      const chIdx = courses.find(c => c.id === courseId).chapters.indexOf(chapter);
+      showSection(chIdx, sectionIdx);
+    }
+  }, 100);
+}
 
-// 切换大题答案显示
-function toggleAnswer(idx) {
-  const answer = document.getElementById(`essay-answer-${idx}`);
-  const btn = document.querySelector(`#essayQuestionsArea .essay-section:nth-child(${idx + 1}) .show-answer-btn`);
+// 显示检索页面
+function showSearch() {
+  hideAllViews();
   
-  if (answer.style.display === 'none') {
-    answer.style.display = 'block';
-    btn.textContent = '收起答案';
-  } else {
-    answer.style.display = 'none';
-    btn.textContent = '展开答案';
+  let searchView = document.getElementById('searchView');
+  if (!searchView) {
+    searchView = document.createElement('div');
+    searchView.id = 'searchView';
+    document.body.appendChild(searchView);
   }
+  
+  searchView.style.display = 'block';
+  updateNavActive(2);
+  
+  searchView.innerHTML = `
+    <div class="search-header">
+      <div class="container">
+        <h2>资料检索</h2>
+        <div class="search-box-inline">
+          <input type="text" id="searchInput" placeholder="搜索课程章节、知识点...">
+          <button onclick="doSearch()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <circle cx="11" cy="11" r="8"></circle>
+              <path d="m21 21-4.35-4.35"></path>
+            </svg>
+          </button>
+        </div>
+        <p>输入关键词检索课程内容</p>
+      </div>
+    </div>
+    <div class="container search-results">
+      <div class="search-tips">
+        <h3>搜索提示</h3>
+        <ul>
+          <li>支持搜索课程名称、章节标题、知识点</li>
+          <li>支持搜索题目内容</li>
+          <li>按 Ctrl+K 快速聚焦搜索框</li>
+        </ul>
+      </div>
+    </div>
+  `;
 }
 
-// 返回课程
-function backToCourse() {
-  if (currentCourse) {
-    showCourse(currentCourse.id);
-  }
-}
-
-// 显示章节总览
+// 显示所有章节
 function showAllChapters() {
   hideAllViews();
   
-  const view = document.createElement('div');
-  view.id = 'allChaptersView';
-  view.innerHTML = `
+  let allChaptersView = document.getElementById('allChaptersView');
+  if (!allChaptersView) {
+    allChaptersView = document.createElement('div');
+    allChaptersView.id = 'allChaptersView';
+    document.body.appendChild(allChaptersView);
+  }
+  
+  allChaptersView.style.display = 'block';
+  updateNavActive(1);
+  
+  allChaptersView.innerHTML = `
     <div class="search-header">
       <div class="container">
         <h2>章节总览</h2>
-        <p>五门课程全部章节一览</p>
+        <div class="breadcrumb">
+          <a href="#" onclick="showHome(); return false;">首页</a>
+          <span>/</span>
+          <span>章节总览</span>
+        </div>
       </div>
     </div>
     <div class="container">
-      <div class="all-chapters">
+      <div class="all-chapters-grid">
         ${courses.map(course => `
-          <div class="course-group">
-            <div class="course-group-header" style="--course-color: ${course.color}">
-              <h3>${course.name}</h3>
-              <span class="badge">${course.shortName}</span>
-            </div>
-            <div class="chapter-grid">
-              ${course.chapters.map((ch, idx) => `
-                <div class="chapter-grid-item" style="--course-color: ${course.color}" onclick="showCourseChapter('${course.id}', ${idx})">
-                  <h4>${ch.title}</h4>
-                  <div class="sections-count">${ch.sections.length} 个知识点</div>
+          <div class="course-section" style="--course-color: ${course.color}">
+            <h3 class="course-title">${course.shortName}</h3>
+            <div class="chapters-list">
+              ${course.chapters.map(chapter => `
+                <div class="chapter-link" onclick="showCourse('${course.id}'); setTimeout(() => { const idx = ${course.chapters.indexOf(chapter)}; document.getElementById('chapter-' + idx)?.classList.add('expanded'); }, 100);">
+                  ${chapter.title}
                 </div>
               `).join('')}
             </div>
@@ -814,120 +1205,46 @@ function showAllChapters() {
       </div>
     </div>
   `;
-  
-  document.body.insertBefore(view, document.querySelector('.footer'));
-  updateNavActive(1);
-  window.scrollTo(0, 0);
 }
 
-// 显示特定课程的特定章节
-function showCourseChapter(courseId, chIdx) {
-  currentCourse = courses.find(c => c.id === courseId);
-  if (!currentCourse) return;
-  
-  // 移除总览视图
-  const allView = document.getElementById('allChaptersView');
-  if (allView) allView.remove();
-  
-  showCourse(courseId);
-  
-  // 延迟展开对应章节
-  setTimeout(() => {
-    const item = document.getElementById(`chapter-${chIdx}`);
-    if (item) {
-      item.classList.add('expanded');
-      item.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-  }, 100);
-}
-
-// 显示搜索页
-function showSearch() {
-  hideAllViews();
-  document.getElementById('searchView').style.display = 'block';
-  updateNavActive(2);
-  window.scrollTo(0, 0);
-}
-
-// 执行搜索
-function doSearch() {
-  const query = (document.getElementById('heroSearch')?.value || document.getElementById('searchInput')?.value || '').trim().toLowerCase();
-  if (!query) return;
-  
-  showSearch();
-  document.getElementById('searchInput').value = query;
-  
-  const results = [];
-  courses.forEach(course => {
-    course.chapters.forEach(ch => {
-      ch.sections.forEach(sec => {
-        const matchTitle = sec.title.toLowerCase().includes(query);
-        const matchKeyPoints = sec.keyPoints.some(kp => kp.toLowerCase().includes(query));
-        
-        if (matchTitle || matchKeyPoints) {
-          results.push({
-            course: course,
-            chapter: ch,
-            section: sec,
-            matchType: matchTitle ? 'title' : 'keyword'
-          });
-        }
-      });
-    });
-  });
-  
-  renderSearchResults(results, query);
-}
-
-// 渲染搜索结果
-function renderSearchResults(results, query) {
-  const container = document.getElementById('searchResults');
-  
-  if (results.length === 0) {
-    container.innerHTML = `
-      <div class="no-results">
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-          <circle cx="11" cy="11" r="8"></circle>
-          <path d="m21 21-4.35-4.35"></path>
-        </svg>
-        <p>未找到与 "${escapeHtml(query)}" 相关的资料</p>
-      </div>
-    `;
-    return;
-  }
-  
-  container.innerHTML = `
-    <div class="search-results">
-      <div class="result-count">共找到 <span>${results.length}</span> 条相关记录</div>
-      ${results.map(r => `
-        <div class="result-item" style="--result-color: ${r.course.color}" onclick="showSectionFromSearch('${r.course.id}', '${r.chapter.title}', '${r.section.title}')">
-          <div class="result-course">${r.course.name}</div>
-          <div class="result-title">${highlightText(r.section.title, query)}</div>
-          <div class="result-keywords">
-            ${r.section.keyPoints.map(kp => {
-              const isMatch = kp.toLowerCase().includes(query);
-              return `<span class="result-keyword ${isMatch ? 'highlight' : ''}">${highlightText(kp, query)}</span>`;
-            }).join('')}
-          </div>
-        </div>
-      `).join('')}
-    </div>
+// 显示Toast提示
+function showToast(message, type = 'info') {
+  const toast = document.createElement('div');
+  toast.className = `toast toast-${type}`;
+  toast.textContent = message;
+  toast.style.cssText = `
+    position: fixed;
+    top: 80px;
+    right: 20px;
+    padding: 12px 24px;
+    background: ${type === 'success' ? '#48bb78' : type === 'error' ? '#fc8181' : '#4299e1'};
+    color: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 10000;
+    animation: slideIn 0.3s ease;
   `;
+  document.body.appendChild(toast);
+  
+  setTimeout(() => {
+    toast.style.animation = 'slideOut 0.3s ease';
+    setTimeout(() => toast.remove(), 300);
+  }, 3000);
 }
 
-// 从搜索结果跳转到节
-function showSectionFromSearch(courseId, chapterTitle, sectionTitle) {
-  const course = courses.find(c => c.id === courseId);
-  if (!course) return;
-  
-  currentCourse = course;
-  const chIdx = course.chapters.findIndex(ch => ch.title === chapterTitle);
-  const secIdx = course.chapters[chIdx]?.sections.findIndex(sec => sec.title === sectionTitle);
-  
-  if (chIdx >= 0 && secIdx >= 0) {
-    showSection(chIdx, secIdx);
+// 添加动画样式
+const styleSheet = document.createElement('style');
+styleSheet.textContent = `
+  @keyframes slideIn {
+    from { transform: translateX(100px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
   }
-}
+  @keyframes slideOut {
+    from { transform: translateX(0); opacity: 1; }
+    to { transform: translateX(100px); opacity: 0; }
+  }
+`;
+document.head.appendChild(styleSheet);
 
 // 渲染课程卡片
 function renderCourseCards() {
@@ -980,10 +1297,12 @@ function hideAllViews() {
   document.getElementById('homeView').style.display = 'none';
   document.getElementById('courseView').style.display = 'none';
   document.getElementById('chapterView').style.display = 'none';
-  document.getElementById('searchView').style.display = 'none';
   
-  const allView = document.getElementById('allChaptersView');
-  if (allView) allView.remove();
+  const searchView = document.getElementById('searchView');
+  if (searchView) searchView.style.display = 'none';
+  
+  const allChaptersView = document.getElementById('allChaptersView');
+  if (allChaptersView) allChaptersView.style.display = 'none';
 }
 
 // 更新导航激活状态

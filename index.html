@@ -26,6 +26,10 @@
         <a href="#" onclick="showAllChapters(); return false;">章节总览</a>
         <a href="#" onclick="showSearch(); return false;">资料检索</a>
       </nav>
+      <div id="userMenu" class="user-menu">
+        <button class="login-btn" onclick="showLoginModal()">登录</button>
+        <button class="register-btn" onclick="showRegisterModal()">注册</button>
+      </div>
     </div>
   </header>
 
@@ -155,6 +159,66 @@
         <polyline points="9 22 9 12 15 12 15 22"></polyline>
       </svg>
     </button>
+  </div>
+
+  <!-- 登录弹窗 -->
+  <div id="loginModal" class="modal" style="display: none;">
+    <div class="modal-overlay" onclick="closeModal('loginModal')"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>用户登录</h3>
+        <button class="modal-close" onclick="closeModal('loginModal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>用户名</label>
+          <input type="text" id="loginUsername" placeholder="请输入用户名">
+        </div>
+        <div class="form-group">
+          <label>密码</label>
+          <input type="password" id="loginPassword" placeholder="请输入密码">
+        </div>
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input type="checkbox" id="rememberMe">
+            <span>记住我</span>
+          </label>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-cancel" onclick="closeModal('loginModal')">取消</button>
+        <button class="btn-submit" onclick="doLogin()">登录</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 注册弹窗 -->
+  <div id="registerModal" class="modal" style="display: none;">
+    <div class="modal-overlay" onclick="closeModal('registerModal')"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>用户注册</h3>
+        <button class="modal-close" onclick="closeModal('registerModal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>用户名</label>
+          <input type="text" id="registerUsername" placeholder="请输入用户名">
+        </div>
+        <div class="form-group">
+          <label>密码</label>
+          <input type="password" id="registerPassword" placeholder="请输入密码">
+        </div>
+        <div class="form-group">
+          <label>确认密码</label>
+          <input type="password" id="registerConfirmPassword" placeholder="请再次输入密码">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-cancel" onclick="closeModal('registerModal')">取消</button>
+        <button class="btn-submit" onclick="doRegister()">注册</button>
+      </div>
+    </div>
   </div>
 
   <script src="data.js"></script>
