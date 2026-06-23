@@ -2,6 +2,104 @@ let currentCourse = null;
 let currentChapter = null;
 let quizStats = { correct: 0, wrong: 0 };
 
+// 学习进度存储
+let learningProgress = loadLearningProgress();
+
+// 加载学习进度
+function loadLearningProgress() {
+  try {
+    const saved = localStorage.getItem('learningProgress');
+    return saved ? JSON.parse(saved) : {};
+  } catch (e) {
+    return {};
+  }
+}
+
+// 保存学习进度
+function saveLearningProgress() {
+  localStorage.setItem('learningProgress', JSON.stringify(learningProgress));
+}
+
+// 更新学习进度
+function updateProgress(courseId, chapterId, sectionId, type, completed = true) {
+  if (!learningProgress[courseId]) {
+    learningProgress[courseId] = {};
+  }
+  if (!learningProgress[courseId][chapterId]) {
+    learningProgress[courseId][chapterId] = { sections: {}, questions: {} };
+  }
+  
+  if (type === 'section') {
+    learningProgress[courseId][chapterId].sections[sectionId] = completed;
+  } else if (type === 'question') {
+    if (!learningProgress[courseId][chapterId].questions[sectionId]) {
+      learningProgress[courseId][chapterId].questions[sectionId] = { correct: 0, total: 0 };
+    }
+    if (completed) {
+      learningProgress[courseId][chapterId].questions[sectionId].correct++;
+    }
+    learningProgress[courseId][chapterId].questions[sectionId].total++;
+  }
+  
+  saveLearningProgress();
+}
+
+// 获取课程学习进度
+function getCourseProgress(courseId) {
+  const course = courses.find(c => c.id === courseId);
+  if (!course || !learningProgress[courseId]) return 0;
+  
+  let totalSections = 0;
+  let completedSections = 0;
+  
+  course.chapters.forEach(chapter => {
+    totalSections += chapter.sections?.length || 0;
+    if (learningProgress[courseId][chapter.id]) {
+      completedSections += Object.values(learningProgress[courseId][chapter.id].sections || {}).filter(Boolean).length;
+    }
+  });
+  
+  return totalSections > 0 ? Math.round((completedSections / totalSections) * 100) : 0;
+}
+
+// 获取章节学习进度
+function getChapterProgress(courseId, chapterId) {
+  if (!learningProgress[courseId] || !learningProgress[courseId][chapterId]) return 0;
+  
+  const chapter = courses.find(c => c.id === courseId)?.chapters.find(ch => ch.id === chapterId);
+  if (!chapter) return 0;
+  
+  const totalSections = chapter.sections?.length || 0;
+  const completedSections = Object.values(learningProgress[courseId][chapterId].sections || {}).filter(Boolean).length;
+  
+  return totalSections > 0 ? Math.round((completedSections / totalSections) * 100) : 0;
+}
+
+// 获取答题统计
+function getQuizStats(courseId) {
+  if (!learningProgress[courseId]) return { correct: 0, total: 0 };
+  
+  let correct = 0;
+  let total = 0;
+  
+  Object.values(learningProgress[courseId]).forEach(chapter => {
+    Object.values(chapter.questions || {}).forEach(section => {
+      correct += section.correct || 0;
+      total += section.total || 0;
+    });
+  });
+  
+  return { correct, total };
+}
+
+// 清除学习进度
+function clearProgress() {
+  learningProgress = {};
+  saveLearningProgress();
+  showToast('学习进度已清除', 'info');
+  renderCourseCards();
+}
+
 // 初始化
 document.addEventListener('DOMContentLoaded', () => {
   renderCourseCards();
@@ -159,6 +257,9 @@ function showSection(chIdx, secIdx) {
   currentChapter = chapter;
   currentChIdx = chIdx;
   currentSecIdx = secIdx;
+  
+  // 更新学习进度
+  updateProgress(currentCourse.id, chapter.id, secIdx, 'section', true);
   
   hideAllViews();
   document.getElementById('chapterView').style.display = 'block';
@@ -436,6 +537,8 @@ function checkMultiAnswer(qIdx) {
   if (isCorrect) {
     quizStats.correct++;
     showToast('回答正确！', 'success');
+    // 更新学习进度
+    updateProgress(currentCourse.id, currentChapter.id, currentSecIdx, 'question', true);
     // 显示正确选项
     correctAnswers.forEach(idx => {
       const option = document.querySelectorAll(`#multiQuestionsArea .question-section:nth-child(${qIdx + 1}) .multi-option`)[idx];
@@ -445,6 +548,8 @@ function checkMultiAnswer(qIdx) {
   } else {
     quizStats.wrong++;
     showToast('回答错误，已显示正确答案', 'error');
+    // 更新学习进度
+    updateProgress(currentCourse.id, currentChapter.id, currentSecIdx, 'question', false);
     // 显示用户错误选择的选项
     selectedOptions.forEach(idx => {
       if (!correctAnswers.includes(idx)) {
@@ -520,6 +625,8 @@ function checkAnswer(qIdx, optIdx, element) {
       if (allSelected) {
         quizStats.correct++;
         showToast('回答正确！', 'success');
+        // 更新学习进度
+        updateProgress(currentCourse.id, currentChapter.id, currentSecIdx, 'question', true);
         
         // 显示解析
         document.getElementById(`analysis-${qIdx}`).style.display = 'block';
@@ -528,6 +635,8 @@ function checkAnswer(qIdx, optIdx, element) {
       element.classList.add('wrong');
       element.querySelector('.option-status').innerHTML = '✗';
       quizStats.wrong++;
+      // 更新学习进度
+      updateProgress(currentCourse.id, currentChapter.id, currentSecIdx, 'question', false);
       
       // 显示所有正确答案
       question.answer.forEach(idx => {
@@ -548,10 +657,14 @@ function checkAnswer(qIdx, optIdx, element) {
       element.querySelector('.option-status').innerHTML = '✓';
       quizStats.correct++;
       showToast('回答正确！', 'success');
+      // 更新学习进度
+      updateProgress(currentCourse.id, currentChapter.id, currentSecIdx, 'question', true);
     } else {
       element.classList.add('wrong');
       element.querySelector('.option-status').innerHTML = '✗';
       quizStats.wrong++;
+      // 更新学习进度
+      updateProgress(currentCourse.id, currentChapter.id, currentSecIdx, 'question', false);
       // 显示正确答案
       const correctOption = document.querySelectorAll(`#choiceQuestionsArea .question-section:nth-child(${qIdx + 1}) .option-item`)[question.answer];
       correctOption.classList.add('correct');
@@ -819,14 +932,28 @@ function showSectionFromSearch(courseId, chapterTitle, sectionTitle) {
 // 渲染课程卡片
 function renderCourseCards() {
   const container = document.getElementById('courseCards');
-  container.innerHTML = courses.map(course => `
+  container.innerHTML = courses.map(course => {
+    const progress = getCourseProgress(course.id);
+    const stats = getQuizStats(course.id);
+    const accuracy = stats.total > 0 ? Math.round((stats.correct / stats.total) * 100) : 0;
+    return `
     <div class="course-card" style="--course-color: ${course.color}" onclick="showCourse('${course.id}')">
       <div class="course-icon" style="background: ${course.color}">${course.shortName}</div>
       <div class="course-short" style="color: ${course.color}">${course.shortName}</div>
       <div class="course-name">${course.name}</div>
       <div class="course-chapters">${course.chapters.length} 章 ${course.chapters.reduce((sum, ch) => sum + ch.sections.length, 0)} 节</div>
+      <div class="course-progress">
+        <div class="progress-bar">
+          <div class="progress-fill" style="width: ${progress}%; background: ${course.color}"></div>
+        </div>
+        <div class="progress-info">
+          <span>进度: ${progress}%</span>
+          <span>答题: ${stats.correct}/${stats.total} (${accuracy}%)</span>
+        </div>
+      </div>
     </div>
-  `).join('');
+  `;
+  }).join('');
 }
 
 // 高亮文本
