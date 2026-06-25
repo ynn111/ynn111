@@ -11352,8 +11352,8 @@ const courses = [
     "id": "maogai",
     "name": "毛泽东思想和中国特色社会主义理论体系概论",
     "shortName": "毛概",
-    "color": "#2d3748",
-    "bgColor": "#edf2f7",
+    "color": "#2b6cb0",
+    "bgColor": "#ebf8ff",
     "description": "系统掌握毛泽东思想和中国特色社会主义理论体系的基本原理，坚定中国特色社会主义理想信念。",
     "chapters": [
       {
@@ -12987,8 +12987,8 @@ const courses = [
     "id": "xigai",
     "name": "习近平新时代中国特色社会主义思想概论",
     "shortName": "习概",
-    "color": "#1a365d",
-    "bgColor": "#ebf8ff",
+    "color": "#805ad5",
+    "bgColor": "#faf5ff",
     "description": "深入学习习近平新时代中国特色社会主义思想，增强对中国特色社会主义的道路自信、理论自信、制度自信、文化自信。",
     "chapters": [
       {
