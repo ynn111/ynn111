@@ -1115,9 +1115,9 @@ body {
   gap: 10px;
   padding: 14px 24px;
   background: white;
-  border: 2px solid #e2e8f0;
+  border: 2px solid var(--course-color);
   border-radius: 12px;
-  color: #4a5568;
+  color: var(--course-color);
   font-size: 0.95rem;
   font-weight: 500;
   cursor: pointer;
@@ -1143,7 +1143,7 @@ body {
 }
 
 .func-btn:hover {
-  background: #f7fafc;
+  background: rgba(0,0,0,0.02);
   border-color: var(--course-color);
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(0,0,0,0.12);
