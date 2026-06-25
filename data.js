@@ -3,8 +3,8 @@ const courses = [
     "id": "sixiu",
     "name": "思想道德与法治",
     "shortName": "思修",
-    "color": "#c53030",
-    "bgColor": "#fff5f5",
+    "color": "#38a169",
+    "bgColor": "#f0fff4",
     "description": "针对大学生成长过程中面临的思想道德与法治问题，开展马克思主义的人生观、价值观、道德观、法治观教育。",
     "chapters": [
       {
@@ -1256,8 +1256,8 @@ const courses = [
     "id": "gangyao",
     "name": "中国近现代史纲要",
     "shortName": "纲要",
-    "color": "#285e61",
-    "bgColor": "#e6fffa",
+    "color": "#3182ce",
+    "bgColor": "#ebf8ff",
     "description": "认识近现代中国社会发展和革命、建设、改革的历史进程及其内在规律，了解国史、国情。",
     "chapters": [
       {
@@ -7512,8 +7512,8 @@ const courses = [
     "id": "mayuan",
     "name": "马克思主义基本原理",
     "shortName": "马原",
-    "color": "#744210",
-    "bgColor": "#fffbeb",
+    "color": "#ed8936",
+    "bgColor": "#fffaf0",
     "description": "系统掌握马克思主义的基本立场、观点和方法，树立科学的世界观、人生观和价值观。",
     "chapters": [
       {
@@ -11352,8 +11352,8 @@ const courses = [
     "id": "maogai",
     "name": "毛泽东思想和中国特色社会主义理论体系概论",
     "shortName": "毛概",
-    "color": "#2b6cb0",
-    "bgColor": "#ebf8ff",
+    "color": "#e53e3e",
+    "bgColor": "#fff5f5",
     "description": "系统掌握毛泽东思想和中国特色社会主义理论体系的基本原理，坚定中国特色社会主义理想信念。",
     "chapters": [
       {
@@ -12987,8 +12987,8 @@ const courses = [
     "id": "xigai",
     "name": "习近平新时代中国特色社会主义思想概论",
     "shortName": "习概",
-    "color": "#805ad5",
-    "bgColor": "#faf5ff",
+    "color": "#f687b3",
+    "bgColor": "#fff0f5",
     "description": "深入学习习近平新时代中国特色社会主义思想，增强对中国特色社会主义的道路自信、理论自信、制度自信、文化自信。",
     "chapters": [
       {
