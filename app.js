@@ -4,93 +4,110 @@ let quizStats = { correct: 0, wrong: 0 };
 
 // 当前用户
 let currentUser = null;
+let authToken = null;
 
-// 用户数据存储
-let users = loadUsers();
-
-// 加载用户数据
-function loadUsers() {
-  try {
-    const saved = localStorage.getItem('learningUsers');
-    return saved ? JSON.parse(saved) : {};
-  } catch (e) {
-    return {};
-  }
-}
-
-// 保存用户数据
-function saveUsers() {
-  localStorage.setItem('learningUsers', JSON.stringify(users));
-}
+// API基础地址
+const API_BASE = '/api';
 
 // 学习进度存储
 let learningProgress = {};
 
-// 加载学习进度
-function loadLearningProgress() {
+// API请求封装
+async function apiRequest(url, options = {}) {
+  const headers = {
+    'Content-Type': 'application/json',
+    ...options.headers
+  };
+  
+  if (authToken) {
+    headers['Authorization'] = `Bearer ${authToken}`;
+  }
+  
   try {
-    if (currentUser) {
-      // 已登录用户，加载用户专属进度
-      const saved = localStorage.getItem(`learningProgress_${currentUser.id}`);
-      const userProgress = saved ? JSON.parse(saved) : {};
+    const response = await fetch(`${API_BASE}${url}`, {
+      ...options,
+      headers
+    });
+    
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('API请求失败:', error);
+    return { success: false, message: '网络请求失败' };
+  }
+}
+
+// 加载学习进度
+async function loadLearningProgress() {
+  try {
+    if (currentUser && authToken) {
+      const result = await apiRequest('/get-all-progress', {
+        method: 'GET'
+      });
       
-      // 检查是否有临时进度需要合并
-      const tempSaved = localStorage.getItem('tempLearningProgress');
-      if (tempSaved) {
-        const tempProgress = JSON.parse(tempSaved);
-        // 合并临时进度到用户进度
-        Object.keys(tempProgress).forEach(courseId => {
-          if (!userProgress[courseId]) {
-            userProgress[courseId] = tempProgress[courseId];
-          } else {
-            Object.keys(tempProgress[courseId]).forEach(chapterId => {
-              if (!userProgress[courseId][chapterId]) {
-                userProgress[courseId][chapterId] = tempProgress[courseId][chapterId];
-              } else {
-                // 合并节进度
-                if (tempProgress[courseId][chapterId].sections) {
-                  Object.assign(userProgress[courseId][chapterId].sections, tempProgress[courseId][chapterId].sections);
+      if (result.success) {
+        const userProgress = result.progress || {};
+        
+        const tempSaved = localStorage.getItem('tempLearningProgress');
+        if (tempSaved) {
+          const tempProgress = JSON.parse(tempSaved);
+          Object.keys(tempProgress).forEach(courseId => {
+            if (!userProgress[courseId]) {
+              userProgress[courseId] = tempProgress[courseId];
+            } else {
+              Object.keys(tempProgress[courseId]).forEach(chapterId => {
+                if (!userProgress[courseId][chapterId]) {
+                  userProgress[courseId][chapterId] = tempProgress[courseId][chapterId];
+                } else {
+                  if (tempProgress[courseId][chapterId].sections) {
+                    Object.assign(userProgress[courseId][chapterId].sections, tempProgress[courseId][chapterId].sections);
+                  }
+                  if (tempProgress[courseId][chapterId].questions) {
+                    Object.keys(tempProgress[courseId][chapterId].questions).forEach(sectionId => {
+                      if (!userProgress[courseId][chapterId].questions[sectionId]) {
+                        userProgress[courseId][chapterId].questions[sectionId] = tempProgress[courseId][chapterId].questions[sectionId];
+                      } else {
+                        userProgress[courseId][chapterId].questions[sectionId].correct += tempProgress[courseId][chapterId].questions[sectionId].correct || 0;
+                        userProgress[courseId][chapterId].questions[sectionId].total += tempProgress[courseId][chapterId].questions[sectionId].total || 0;
+                      }
+                    });
+                  }
                 }
-                // 合并答题统计
-                if (tempProgress[courseId][chapterId].questions) {
-                  Object.keys(tempProgress[courseId][chapterId].questions).forEach(sectionId => {
-                    if (!userProgress[courseId][chapterId].questions[sectionId]) {
-                      userProgress[courseId][chapterId].questions[sectionId] = tempProgress[courseId][chapterId].questions[sectionId];
-                    } else {
-                      userProgress[courseId][chapterId].questions[sectionId].correct += tempProgress[courseId][chapterId].questions[sectionId].correct || 0;
-                      userProgress[courseId][chapterId].questions[sectionId].total += tempProgress[courseId][chapterId].questions[sectionId].total || 0;
-                    }
-                  });
-                }
-              }
-            });
-          }
-        });
-        // 清除临时进度
-        localStorage.removeItem('tempLearningProgress');
-        // 保存合并后的进度
-        localStorage.setItem(`learningProgress_${currentUser.id}`, JSON.stringify(userProgress));
+              });
+            }
+          });
+          localStorage.removeItem('tempLearningProgress');
+        }
+        
+        return userProgress;
       }
-      
-      return userProgress;
-    } else {
-      // 未登录用户，加载临时进度
-      const saved = localStorage.getItem('tempLearningProgress');
-      return saved ? JSON.parse(saved) : {};
     }
+    
+    const saved = localStorage.getItem('tempLearningProgress');
+    return saved ? JSON.parse(saved) : {};
   } catch (e) {
+    console.error('加载学习进度失败:', e);
     return {};
   }
 }
 
 // 保存学习进度
-function saveLearningProgress() {
+async function saveLearningProgress() {
   try {
-    if (currentUser) {
-      // 已登录用户，保存到用户专属进度
-      localStorage.setItem(`learningProgress_${currentUser.id}`, JSON.stringify(learningProgress));
+    if (currentUser && authToken) {
+      for (const courseId of Object.keys(learningProgress)) {
+        for (const chapterId of Object.keys(learningProgress[courseId])) {
+          await apiRequest('/save-progress', {
+            method: 'POST',
+            body: JSON.stringify({
+              courseId,
+              chapterId,
+              progressData: learningProgress[courseId][chapterId]
+            })
+          });
+        }
+      }
     } else {
-      // 未登录用户，保存到临时进度
       localStorage.setItem('tempLearningProgress', JSON.stringify(learningProgress));
     }
   } catch (e) {
@@ -220,41 +237,45 @@ function clearProgress() {
 }
 
 // 用户注册
-function registerUser(username, password) {
-  if (users[username]) {
-    return { success: false, message: '用户名已存在' };
+async function registerUser(username, password) {
+  const result = await apiRequest('/register', {
+    method: 'POST',
+    body: JSON.stringify({ username, password })
+  });
+  
+  if (result.success) {
+    authToken = result.token;
+    currentUser = result.user;
+    localStorage.setItem('authToken', authToken);
+    learningProgress = await loadLearningProgress();
   }
   
-  const userId = Date.now().toString();
-  users[username] = {
-    id: userId,
-    username: username,
-    password: password,
-    createdAt: new Date().toISOString()
-  };
-  saveUsers();
-  return { success: true, message: '注册成功' };
+  return result;
 }
 
 // 用户登录
-function loginUser(username, password) {
-  const user = users[username];
-  if (!user) {
-    return { success: false, message: '用户名不存在' };
-  }
-  if (user.password !== password) {
-    return { success: false, message: '密码错误' };
+async function loginUser(username, password) {
+  const result = await apiRequest('/login', {
+    method: 'POST',
+    body: JSON.stringify({ username, password })
+  });
+  
+  if (result.success) {
+    authToken = result.token;
+    currentUser = result.user;
+    localStorage.setItem('authToken', authToken);
+    learningProgress = await loadLearningProgress();
   }
   
-  currentUser = user;
-  learningProgress = loadLearningProgress();
-  return { success: true, message: '登录成功' };
+  return result;
 }
 
 // 用户注销
 function logoutUser() {
   currentUser = null;
+  authToken = null;
   learningProgress = {};
+  localStorage.removeItem('authToken');
   localStorage.removeItem('currentUserId');
   showToast('已退出登录', 'info');
   renderCourseCards();
@@ -262,15 +283,21 @@ function logoutUser() {
   updateUserMenu();
 }
 
-// 检查是否有记住的用户
-function checkRememberedUser() {
-  const rememberedUserId = localStorage.getItem('currentUserId');
-  if (rememberedUserId) {
-    // 找到对应的用户
-    const user = Object.values(users).find(u => u.id === rememberedUserId);
-    if (user) {
-      currentUser = user;
-      learningProgress = loadLearningProgress();
+// 检查是否有保存的token
+async function checkRememberedUser() {
+  const savedToken = localStorage.getItem('authToken');
+  if (savedToken) {
+    authToken = savedToken;
+    const result = await apiRequest('/user', {
+      method: 'GET'
+    });
+    
+    if (result.success) {
+      currentUser = result.user;
+      learningProgress = await loadLearningProgress();
+    } else {
+      localStorage.removeItem('authToken');
+      authToken = null;
     }
   }
 }
@@ -309,7 +336,7 @@ function closeModal(modalId) {
 }
 
 // 执行注册
-function doRegister() {
+async function doRegister() {
   const username = document.getElementById('registerUsername').value;
   const password = document.getElementById('registerPassword').value;
   const confirmPassword = document.getElementById('registerConfirmPassword').value;
@@ -324,32 +351,31 @@ function doRegister() {
     return;
   }
   
-  const result = registerUser(username, password);
+  const result = await registerUser(username, password);
   showToast(result.message, result.success ? 'success' : 'error');
   
   if (result.success) {
     closeModal('registerModal');
+    updateUserMenu();
+    renderCourseCards();
+    updateGlobalStats();
   }
 }
 
 // 执行登录
-function doLogin() {
+async function doLogin() {
   const username = document.getElementById('loginUsername').value;
   const password = document.getElementById('loginPassword').value;
-  const rememberMe = document.getElementById('rememberMe').checked;
   
   if (!username || !password) {
     showToast('请填写用户名和密码', 'error');
     return;
   }
   
-  const result = loginUser(username, password);
+  const result = await loginUser(username, password);
   showToast(result.message, result.success ? 'success' : 'error');
   
   if (result.success) {
-    if (rememberMe) {
-      localStorage.setItem('currentUserId', currentUser.id);
-    }
     closeModal('loginModal');
     updateUserMenu();
     renderCourseCards();
@@ -358,8 +384,8 @@ function doLogin() {
 }
 
 // 初始化
-document.addEventListener('DOMContentLoaded', () => {
-  checkRememberedUser();
+document.addEventListener('DOMContentLoaded', async () => {
+  await checkRememberedUser();
   renderCourseCards();
   createBackToTopButton();
   updateUserMenu();

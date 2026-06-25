@@ -1,0 +1,11 @@
+{
+  "users": {
+    "testuser": {
+      "id": "1782381523182",
+      "username": "testuser",
+      "password": "$2b$10$MA6kdh2RZ.YShqYwPV8KW.Va5452LJR7ktCJB.2TUnoYupna69eVG",
+      "createdAt": "2026-06-25T09:58:43.182Z"
+    }
+  },
+  "learningProgress": {}
+}
