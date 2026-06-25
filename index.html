@@ -149,7 +149,7 @@
 
   <!-- 浮动操作按钮 -->
   <div class="fab-container" id="fabContainer">
-    <button class="fab-btn fab-secondary visible" onclick="toggleBookmark()" id="fabBookmark">
+    <button class="fab-btn fab-secondary visible" onclick="toggleNotePanel()" id="fabNote" title="笔记与错题">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
       </svg>
@@ -160,6 +160,26 @@
         <polyline points="9 22 9 12 15 12 15 22"></polyline>
       </svg>
     </button>
+  </div>
+
+  <!-- 笔记与错题面板 -->
+  <div class="note-panel" id="notePanel">
+    <div class="note-panel-header">
+      <h3>笔记与错题</h3>
+      <button class="note-panel-close" onclick="closeNotePanel()">&times;</button>
+    </div>
+    <div class="note-tabs">
+      <button class="note-tab-btn active" data-tab="notes" onclick="switchNoteTab('notes')">我的笔记</button>
+      <button class="note-tab-btn" data-tab="wrong" onclick="switchNoteTab('wrong')">错题收藏</button>
+    </div>
+    <div class="note-panel-body">
+      <div id="noteTabContent" class="note-tab-content">
+        <div id="notesList"></div>
+      </div>
+      <div id="wrongTabContent" class="note-tab-content" style="display:none;">
+        <div id="wrongQuestionsList"></div>
+      </div>
+    </div>
   </div>
 
   <!-- 登录弹窗 -->

@@ -16,6 +16,12 @@ let useRemoteAPI = API_BASE !== '/api';
 // 学习进度存储
 let learningProgress = {};
 
+// 用户笔记存储
+let userNotes = {};
+
+// 错题收藏存储
+let wrongQuestions = {};
+
 // API请求封装
 async function apiRequest(url, options = {}) {
   const headers = {
@@ -456,6 +462,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     useRemoteAPI = true;
   }
   
+  loadNotesAndWrongQuestions();
   await checkRememberedUser();
   renderCourseCards();
   createBackToTopButton();
@@ -955,6 +962,9 @@ function checkMultiAnswer(qIdx) {
       option.classList.add('correct');
       option.querySelector('.option-status').innerHTML = '✓';
     });
+    
+    // 收藏错题
+    addWrongQuestion(currentCourse.id, currentChapter.id, currentSecIdx, question, selectedOptions);
   }
   
   // 显示解析
@@ -1024,7 +1034,10 @@ function checkAnswer(qIdx, optIdx, element) {
       });
       
       showToast('回答错误，已显示正确答案', 'error');
-      
+
+      // 收藏错题
+      addWrongQuestion(currentCourse.id, currentChapter.id, currentSecIdx, question, optIdx);
+
       // 显示解析
       document.getElementById(`analysis-${qIdx}`).style.display = 'block';
     }
@@ -1048,6 +1061,9 @@ function checkAnswer(qIdx, optIdx, element) {
       correctOption.classList.add('correct');
       correctOption.querySelector('.option-status').innerHTML = '✓';
       showToast('回答错误，已显示正确答案', 'error');
+
+      // 收藏错题
+      addWrongQuestion(currentCourse.id, currentChapter.id, currentSecIdx, question, optIdx);
     }
     
     // 显示解析
@@ -1066,6 +1082,217 @@ function updateQuizStats() {
       <span>正确: ${quizStats.correct}</span>
       <span>错误: ${quizStats.wrong}</span>
     `;
+  }
+}
+
+// ============ 笔记和错题收藏功能 ============
+
+// 加载笔记和错题数据
+function loadNotesAndWrongQuestions() {
+  try {
+    const savedNotes = localStorage.getItem('userNotes');
+    userNotes = savedNotes ? JSON.parse(savedNotes) : {};
+    const savedWrong = localStorage.getItem('wrongQuestions');
+    wrongQuestions = savedWrong ? JSON.parse(savedWrong) : {};
+  } catch (e) {
+    userNotes = {};
+    wrongQuestions = {};
+  }
+}
+
+// 保存笔记和错题数据
+function saveNotesAndWrongQuestions() {
+  try {
+    localStorage.setItem('userNotes', JSON.stringify(userNotes));
+    localStorage.setItem('wrongQuestions', JSON.stringify(wrongQuestions));
+  } catch (e) {
+    console.error('保存笔记/错题失败:', e);
+  }
+}
+
+// 获取当前节的笔记key
+function getNoteKey() {
+  if (!currentCourse || !currentChapter) return null;
+  return `${currentCourse.id}_${currentChapter.id}_${currentSecIdx}`;
+}
+
+// 获取当前节的错题key
+function getWrongKey() {
+  if (!currentCourse || !currentChapter) return null;
+  return `${currentCourse.id}_${currentChapter.id}_${currentSecIdx}`;
+}
+
+// 切换笔记面板
+function toggleNotePanel() {
+  const panel = document.getElementById('notePanel');
+  if (!panel) return;
+  panel.classList.toggle('open');
+  if (panel.classList.contains('open')) {
+    renderNotePanel();
+  }
+}
+
+// 关闭笔记面板
+function closeNotePanel() {
+  const panel = document.getElementById('notePanel');
+  if (panel) panel.classList.remove('open');
+}
+
+// 渲染笔记面板内容
+function renderNotePanel() {
+  // 切换到笔记标签
+  switchNoteTab('notes');
+}
+
+// 切换笔记面板标签
+function switchNoteTab(tab) {
+  const tabBtns = document.querySelectorAll('.note-tab-btn');
+  tabBtns.forEach(btn => btn.classList.remove('active'));
+  const targetBtn = document.querySelector(`.note-tab-btn[data-tab="${tab}"]`);
+  if (targetBtn) targetBtn.classList.add('active');
+
+  const notesContent = document.getElementById('noteTabContent');
+  const wrongContent = document.getElementById('wrongTabContent');
+
+  if (tab === 'notes') {
+    notesContent.style.display = 'block';
+    wrongContent.style.display = 'none';
+    renderNotesList();
+  } else {
+    notesContent.style.display = 'none';
+    wrongContent.style.display = 'block';
+    renderWrongQuestionsList();
+  }
+}
+
+// 渲染笔记列表
+function renderNotesList() {
+  const container = document.getElementById('notesList');
+  const noteKey = getNoteKey();
+  const currentNote = noteKey ? (userNotes[noteKey] || '') : '';
+
+  container.innerHTML = `
+    <div class="note-editor">
+      <textarea id="noteTextarea" placeholder="在这里写笔记...">${escapeHtml(currentNote)}</textarea>
+      <button class="note-save-btn" onclick="saveCurrentNote()">保存笔记</button>
+    </div>
+    <div class="note-history">
+      <h4>历史笔记</h4>
+      ${Object.keys(userNotes).filter(k => userNotes[k].trim()).map(key => {
+        const parts = key.split('_');
+        const courseId = parts[0];
+        const course = courses.find(c => c.id === courseId);
+        const courseName = course ? course.shortName : courseId;
+        return `
+          <div class="note-history-item" onclick="navigateToNote('${key}')">
+            <span class="note-course-tag" style="background:${course ? course.color : '#666'}">${courseName}</span>
+            <span class="note-preview">${escapeHtml(userNotes[key].substring(0, 50))}${userNotes[key].length > 50 ? '...' : ''}</span>
+          </div>
+        `;
+      }).join('') || '<p class="empty-hint">还没有笔记</p>'}
+    </div>
+  `;
+}
+
+// 保存当前笔记
+function saveCurrentNote() {
+  const textarea = document.getElementById('noteTextarea');
+  if (!textarea) return;
+  const noteKey = getNoteKey();
+  if (!noteKey) {
+    showToast('请先选择一个章节', 'error');
+    return;
+  }
+  userNotes[noteKey] = textarea.value;
+  saveNotesAndWrongQuestions();
+  showToast('笔记已保存', 'success');
+  renderNotesList();
+}
+
+// 导航到笔记对应的章节
+function navigateToNote(key) {
+  const parts = key.split('_');
+  const courseId = parts[0];
+  const chapterId = parts[1];
+  const secIdx = parseInt(parts[2]);
+
+  const course = courses.find(c => c.id === courseId);
+  if (!course) return;
+
+  showCourse(courseId);
+  setTimeout(() => {
+    const chIdx = course.chapters.findIndex(ch => ch.id === chapterId);
+    if (chIdx >= 0) {
+      showSection(chIdx, secIdx);
+      closeNotePanel();
+    }
+  }, 200);
+}
+
+// 收藏当前错题（在答题错误时调用）
+function addWrongQuestion(courseId, chapterId, secIdx, question, userAnswer) {
+  const key = `${courseId}_${chapterId}_${secIdx}`;
+  if (!wrongQuestions[key]) wrongQuestions[key] = [];
+
+  // 检查是否已收藏
+  const exists = wrongQuestions[key].some(q => q.question === question.question);
+  if (exists) return;
+
+  wrongQuestions[key].push({
+    question: question.question,
+    options: question.options,
+    answer: question.answer,
+    analysis: question.analysis || '',
+    userAnswer: userAnswer,
+    addedAt: new Date().toLocaleString()
+  });
+
+  saveNotesAndWrongQuestions();
+}
+
+// 渲染错题列表
+function renderWrongQuestionsList() {
+  const container = document.getElementById('wrongQuestionsList');
+  const allWrong = [];
+
+  Object.keys(wrongQuestions).forEach(key => {
+    const parts = key.split('_');
+    const courseId = parts[0];
+    const chapterId = parts[1];
+    const course = courses.find(c => c.id === courseId);
+    const courseName = course ? course.shortName : courseId;
+
+    wrongQuestions[key].forEach((q, idx) => {
+      allWrong.push({ key, idx, courseName, courseColor: course ? course.color : '#666', ...q });
+    });
+  });
+
+  if (allWrong.length === 0) {
+    container.innerHTML = '<p class="empty-hint">还没有收藏错题</p>';
+    return;
+  }
+
+  container.innerHTML = allWrong.map((q, i) => `
+    <div class="wrong-question-item">
+      <div class="wrong-q-header">
+        <span class="wrong-course-tag" style="background:${q.courseColor}">${q.courseName}</span>
+        <button class="wrong-remove-btn" onclick="removeWrongQuestion('${q.key}', ${q.idx})">删除</button>
+      </div>
+      <div class="wrong-q-text">${escapeHtml(q.question)}</div>
+      <div class="wrong-q-answer">正确答案: ${Array.isArray(q.answer) ? q.answer.map(a => String.fromCharCode(65 + a)).join(', ') : String.fromCharCode(65 + q.answer)}</div>
+      ${q.analysis ? `<div class="wrong-q-analysis">${escapeHtml(q.analysis)}</div>` : ''}
+    </div>
+  `).join('');
+}
+
+// 删除错题
+function removeWrongQuestion(key, idx) {
+  if (wrongQuestions[key]) {
+    wrongQuestions[key].splice(idx, 1);
+    if (wrongQuestions[key].length === 0) delete wrongQuestions[key];
+    saveNotesAndWrongQuestions();
+    renderWrongQuestionsList();
+    showToast('已删除', 'success');
   }
 }
 

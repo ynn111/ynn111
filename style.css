@@ -1703,3 +1703,257 @@ body {
   transform: translateY(-2px);
   box-shadow: 0 4px 15px rgba(26, 54, 93, 0.3);
 }
+
+/* 笔记与错题面板 */
+.note-panel {
+  position: fixed;
+  right: -400px;
+  top: 0;
+  bottom: 0;
+  width: 380px;
+  background: white;
+  box-shadow: -4px 0 20px rgba(0,0,0,0.15);
+  z-index: 1000;
+  transition: right 0.3s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.note-panel.open {
+  right: 0;
+}
+
+.note-panel-header {
+  padding: 20px;
+  background: linear-gradient(135deg, #1a365d 0%, #2c5282 100%);
+  color: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.note-panel-header h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.note-panel-close {
+  background: rgba(255,255,255,0.2);
+  border: none;
+  color: white;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 1.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.note-panel-close:hover {
+  background: rgba(255,255,255,0.3);
+}
+
+.note-tabs {
+  display: flex;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.note-tab-btn {
+  flex: 1;
+  padding: 14px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: #718096;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.note-tab-btn.active {
+  color: #1a365d;
+}
+
+.note-tab-btn.active::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #1a365d;
+}
+
+.note-tab-btn:hover {
+  background: #f7fafc;
+}
+
+.note-panel-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.note-tab-content {
+  display: none;
+}
+
+.note-editor {
+  margin-bottom: 24px;
+}
+
+.note-editor textarea {
+  width: 100%;
+  min-height: 200px;
+  padding: 16px;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-family: inherit;
+  resize: vertical;
+  transition: border-color 0.2s;
+}
+
+.note-editor textarea:focus {
+  outline: none;
+  border-color: #4299e1;
+}
+
+.note-save-btn {
+  margin-top: 12px;
+  padding: 10px 24px;
+  background: #1a365d;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.note-save-btn:hover {
+  background: #2c5282;
+  transform: translateY(-1px);
+}
+
+.note-history h4 {
+  font-size: 1rem;
+  color: #1a365d;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.note-history-item {
+  padding: 12px;
+  background: #f7fafc;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.note-history-item:hover {
+  background: #edf2f7;
+  transform: translateX(4px);
+}
+
+.note-course-tag {
+  padding: 4px 10px;
+  border-radius: 4px;
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.note-preview {
+  flex: 1;
+  font-size: 0.85rem;
+  color: #4a5568;
+  line-height: 1.5;
+}
+
+.empty-hint {
+  text-align: center;
+  padding: 40px 20px;
+  color: #a0aec0;
+  font-size: 0.9rem;
+}
+
+.wrong-question-item {
+  padding: 16px;
+  background: #fff5f5;
+  border-left: 4px solid #fc8181;
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+.wrong-q-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.wrong-course-tag {
+  padding: 4px 10px;
+  border-radius: 4px;
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.wrong-remove-btn {
+  padding: 4px 12px;
+  background: white;
+  border: 1px solid #fc8181;
+  color: #fc8181;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: all 0.2s;
+}
+
+.wrong-remove-btn:hover {
+  background: #fc8181;
+  color: white;
+}
+
+.wrong-q-text {
+  font-size: 0.9rem;
+  color: #2d3748;
+  margin-bottom: 10px;
+  line-height: 1.6;
+}
+
+.wrong-q-answer {
+  font-size: 0.85rem;
+  color: #38a169;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.wrong-q-analysis {
+  font-size: 0.85rem;
+  color: #718096;
+  line-height: 1.6;
+  padding-top: 8px;
+  border-top: 1px solid #fed7d7;
+}
+
+/* 响应式 */
+@media (max-width: 768px) {
+  .note-panel {
+    width: 100%;
+    right: -100%;
+  }
+}
