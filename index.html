@@ -29,6 +29,7 @@
       <div id="userMenu" class="user-menu">
         <button class="login-btn" onclick="showLoginModal()">登录</button>
         <button class="register-btn" onclick="showRegisterModal()">注册</button>
+        <button class="config-btn" onclick="showConfigModal()" title="配置后端地址">⚙️</button>
       </div>
     </div>
   </header>
@@ -217,6 +218,33 @@
       <div class="modal-footer">
         <button class="btn-cancel" onclick="closeModal('registerModal')">取消</button>
         <button class="btn-submit" onclick="doRegister()">注册</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 配置弹窗 -->
+  <div id="configModal" class="modal" style="display: none;">
+    <div class="modal-overlay" onclick="closeModal('configModal')"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>系统配置</h3>
+        <button class="modal-close" onclick="closeModal('configModal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>后端服务器地址</label>
+          <input type="text" id="apiBaseUrl" placeholder="例如: https://your-project.glitch.me" value="">
+          <p class="form-hint">留空则使用本地服务器（需在本地运行 npm start）</p>
+        </div>
+        <div class="form-group">
+          <label>当前API状态</label>
+          <div id="apiStatus" class="status-indicator">未检测</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-cancel" onclick="closeModal('configModal')">取消</button>
+        <button class="btn-submit" onclick="saveConfig()">保存配置</button>
+        <button class="btn-test" onclick="testAPI()">测试连接</button>
       </div>
     </div>
   </div>

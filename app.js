@@ -6,8 +6,12 @@ let quizStats = { correct: 0, wrong: 0 };
 let currentUser = null;
 let authToken = null;
 
-// API基础地址
-const API_BASE = '/api';
+// API基础地址 - 可以在这里修改为你的后端地址
+// 例如: let API_BASE = 'https://your-project.glitch.me/api';
+let API_BASE = '/api';
+
+// 是否启用远程API模式（如果API不可用会自动降级）
+let useRemoteAPI = API_BASE !== '/api';
 
 // 学习进度存储
 let learningProgress = {};
@@ -383,8 +387,75 @@ async function doLogin() {
   }
 }
 
+// 显示配置弹窗
+function showConfigModal() {
+  const savedUrl = localStorage.getItem('apiBaseUrl');
+  document.getElementById('apiBaseUrl').value = savedUrl || '';
+  document.getElementById('configModal').style.display = 'flex';
+}
+
+// 保存配置
+function saveConfig() {
+  const url = document.getElementById('apiBaseUrl').value.trim();
+  localStorage.setItem('apiBaseUrl', url);
+  
+  if (url) {
+    API_BASE = `${url}/api`;
+    useRemoteAPI = true;
+    showToast('配置已保存，刷新页面生效', 'success');
+  } else {
+    API_BASE = '/api';
+    useRemoteAPI = false;
+    showToast('已恢复默认配置，刷新页面生效', 'info');
+  }
+  
+  closeModal('configModal');
+}
+
+// 测试API连接
+async function testAPI() {
+  const url = document.getElementById('apiBaseUrl').value.trim();
+  if (!url) {
+    showToast('请先输入服务器地址', 'error');
+    return;
+  }
+  
+  const statusEl = document.getElementById('apiStatus');
+  statusEl.textContent = '测试中...';
+  statusEl.className = 'status-indicator testing';
+  
+  try {
+    const response = await fetch(`${url}/api/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: 'test', password: 'test' }),
+      timeout: 5000
+    });
+    
+    if (response.ok) {
+      statusEl.textContent = '连接成功 ✅';
+      statusEl.className = 'status-indicator success';
+      showToast('API连接成功！', 'success');
+    } else {
+      statusEl.textContent = '服务器正常但认证失败（预期行为）✅';
+      statusEl.className = 'status-indicator success';
+      showToast('服务器连接成功！', 'success');
+    }
+  } catch (e) {
+    statusEl.textContent = '连接失败 ❌';
+    statusEl.className = 'status-indicator error';
+    showToast('无法连接到服务器，请检查地址是否正确', 'error');
+  }
+}
+
 // 初始化
 document.addEventListener('DOMContentLoaded', async () => {
+  const savedUrl = localStorage.getItem('apiBaseUrl');
+  if (savedUrl) {
+    API_BASE = `${savedUrl}/api`;
+    useRemoteAPI = true;
+  }
+  
   await checkRememberedUser();
   renderCourseCards();
   createBackToTopButton();
