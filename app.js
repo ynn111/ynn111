@@ -47,6 +47,16 @@ async function apiRequest(url, options = {}) {
   }
 }
 
+// 本地模拟用户存储
+function getLocalUsers() {
+  const users = localStorage.getItem('localUsers');
+  return users ? JSON.parse(users) : {};
+}
+
+function saveLocalUsers(users) {
+  localStorage.setItem('localUsers', JSON.stringify(users));
+}
+
 // 加载学习进度
 async function loadLearningProgress() {
   try {
@@ -248,6 +258,16 @@ function clearProgress() {
 
 // 用户注册
 async function registerUser(username, password) {
+  if (!useRemoteAPI) {
+    const users = getLocalUsers();
+    if (users[username]) {
+      return { success: false, message: '用户名已存在' };
+    }
+    users[username] = { password, id: Date.now(), createdAt: new Date().toISOString() };
+    saveLocalUsers(users);
+    return { success: true, message: '注册成功' };
+  }
+  
   const result = await apiRequest('/register', {
     method: 'POST',
     body: JSON.stringify({ username, password })
@@ -265,6 +285,23 @@ async function registerUser(username, password) {
 
 // 用户登录
 async function loginUser(username, password) {
+  if (!useRemoteAPI) {
+    const users = getLocalUsers();
+    const user = users[username];
+    if (!user) {
+      return { success: false, message: '用户名或密码错误' };
+    }
+    if (user.password !== password) {
+      return { success: false, message: '用户名或密码错误' };
+    }
+    const token = `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    authToken = token;
+    currentUser = { id: user.id, username, createdAt: user.createdAt };
+    localStorage.setItem('authToken', token);
+    learningProgress = await loadLearningProgress();
+    return { success: true, message: '登录成功', token, user: currentUser };
+  }
+  
   const result = await apiRequest('/login', {
     method: 'POST',
     body: JSON.stringify({ username, password })
